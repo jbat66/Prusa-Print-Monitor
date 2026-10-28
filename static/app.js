@@ -19,6 +19,7 @@ function tick(){
  $('filament-note').textContent=data.filament>0?(elapsed>=data.filament?'Change due • awaiting printer update':'Until the next change'):'No change scheduled / not reported';
  $('freshness').textContent=data.updated?`Last updated ${new Date(data.updated*1000).toLocaleTimeString()}${connected?'':' • showing last known status'}`:'No successful printer update yet';
  $('ack').disabled=!pending;
+ $('ack').hidden=!pending;
  if(pending&&enabled&&!muted&&data.alert&&Date.now()-lastPlayed>=data.repeat*1000&&audio.paused){lastPlayed=Date.now();audio.currentTime=0;audio.play().catch(()=>{$('notice').textContent='Sound blocked. Click Enable sounds to retry.';enabled=false;});}
 }
 function settingsNotice(){
@@ -48,6 +49,12 @@ async function cameraStatus(){
  }catch{if(cameraOn&&viewer===cameraViewer)$('camera-status').textContent='Cannot read camera status. Check UNRAID container logs.';}
 }
 $('camera').onload=()=>{$('camera-status').textContent='Live camera';};$('camera').onerror=()=>{$('camera-status').textContent='Camera unavailable. Check CAMERA_URL, then toggle to retry.';};
-try{$('layout').value=localStorage.getItem('layout')||'desktop';}catch{}
+const mobileDevice=typeof navigator!=='undefined'&&(
+ navigator.userAgentData?.mobile===true||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'')||
+ (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1));
+let initialLayout='desktop';
+try{initialLayout=localStorage.getItem('layout')||'desktop';}catch{}
+$('layout').value=mobileDevice?'mobile':initialLayout;
+$('fullscreen').hidden=mobileDevice;
 function layout(){document.body.dataset.layout=$('layout').value;try{localStorage.setItem('layout',$('layout').value);}catch{}}
 $('layout').onchange=layout;layout();setInterval(tick,1000);poll();

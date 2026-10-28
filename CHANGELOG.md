@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.6
+
+- Alphabetize layouts: Across the Room, Compact Corner, Desktop, Mobile.
+- Place Acknowledge beside Layout and show it only for a pending state-change alert.
+- Automatically start phones and tablets in Mobile layout, including iPads using desktop-style identification.
+- Hide Full screen on mobile devices while keeping manual layout selection available.
+
 ## 0.2.5
 
 - Place the camera to the right of Printer Status in Desktop and Across the Room layouts on wide screens.
