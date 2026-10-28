@@ -76,6 +76,8 @@ jobs:
           grep -i "Content-Type: audio/mpeg" "$RUNNER_TEMP/alert-headers"
           curl --fail http://127.0.0.1:8085/ | grep 'PRINT MONITOR'
           curl --fail http://127.0.0.1:8085/icon.png -o "$RUNNER_TEMP/icon.png"
+          curl --fail http://127.0.0.1:8085/favicon.ico -o "$RUNNER_TEMP/favicon.ico"
+          python -c "from pathlib import Path; assert Path('$RUNNER_TEMP/favicon.ico').read_bytes()[:6] == bytes([0,0,1,0,7,0])"
           python -c "from pathlib import Path; assert Path('$RUNNER_TEMP/icon.png').read_bytes().startswith(bytes([137,80,78,71,13,10,26,10]))"
           docker exec monitor-smoke ffmpeg -hide_banner -h muxer=mpjpeg 2>&1 | grep boundary_tag
           # A closed loopback port exercises the real RTSP input option parser.

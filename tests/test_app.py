@@ -62,7 +62,7 @@ class Tests(unittest.TestCase):
                 body = json.load(r)
             self.assertNotIn('API_KEY', body)
             self.assertNotIn('camera_url', body)
-            for path in ['/', '/app.js', '/style.css', '/health', '/icon.png']:
+            for path in ['/', '/app.js', '/style.css', '/health', '/icon.png', '/favicon.ico']:
                 with urllib.request.urlopen(base + path) as r:
                     self.assertEqual(r.status, 200)
             for path in ['/camera', '/alert', '/../app.py']:
@@ -78,6 +78,21 @@ class Tests(unittest.TestCase):
         self.assertNotIn('secret-password', result)
         self.assertNotIn('private-token', result)
         self.assertNotIn('maker', result)
+
+    def test_favicon_has_valid_small_icon_entries(self):
+        import struct
+        data = Path('assets/favicon.ico').read_bytes()
+        self.assertEqual(struct.unpack_from('<HHH', data), (0, 1, 7))
+        sizes = []
+        for index in range(7):
+            width, height, _, _, _, _, length, offset = struct.unpack_from('<BBBBHHII', data, 6 + index * 16)
+            size = width or 256
+            self.assertEqual(height or 256, size)
+            png = data[offset:offset + length]
+            self.assertTrue(png.startswith(b'\x89PNG\r\n\x1a\n'))
+            self.assertEqual(struct.unpack_from('>II', png, 16), (size, size))
+            sizes.append(size)
+        self.assertEqual(sizes, [16, 24, 32, 48, 64, 128, 256])
 
     def test_template_order_and_visibility(self):
         configs = ET.parse('unraid/prusa-print-monitor.xml').getroot().findall('Config')
@@ -119,7 +134,7 @@ class Tests(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
         self.assertEqual(self.monitor.repeat, 60)
-        self.assertEqual(self.monitor.snapshot()['version'], '0.2.6')
+        self.assertEqual(self.monitor.snapshot()['version'], '0.2.7')
 
     def test_digest_challenge(self):
         import hashlib

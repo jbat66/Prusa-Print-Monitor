@@ -1,4 +1,4 @@
-# Prusa Print Monitor — version 0.2.6
+# Prusa Print Monitor — version 0.2.7
 
 A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a desktop corner or a room display. Uses the same HTTP Digest authentication and status fields as `printer-state-display.sh`. No printer credentials are sent to the browser.
 
@@ -81,9 +81,9 @@ node --test tests/dashboard.test.cjs
 Tests cover state transitions, repeat/acknowledge/mute behavior, disconnections, invalid payloads, web routes, camera controls, credential isolation, and template variable order. CI builds Linux AMD64 and ARM64 images. To update an UNRAID installation after a new image is published, use **Check for Updates** on its Docker page.
 
 
-## Updating to version 0.2.6
+## Updating to version 0.2.7
 
-Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.6` and `:latest`. The source release is tagged `v0.2.6`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
+Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.7` and `:latest`. The source release is tagged `v0.2.7`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
 
 Existing UNRAID containers retain their old settings. Update the container configuration using the new template: change the container port to **8085** (and host port to 8085 unless you prefer another port), remove `ALERT_SOUND_FILE`, replace the old Sounds directory mount with **Sound File** pointing to an existing host file and container target `/sounds`, and set `ALERT_REPEAT_SECONDS=60`. The camera URL is now unmasked. Update the image and recreate/apply the container.
 
@@ -109,3 +109,6 @@ Version 0.2.5 positions the enabled camera beside Printer Status on wide screens
 
 
 Version 0.2.6 alphabetizes the layout menu and shows Acknowledge beside Layout only while a state-change alert is pending. Mobile devices start in Mobile layout on each page load, even if another layout was saved; you can still choose another layout during the session. Full screen is hidden on mobile devices. Desktop browsers retain their saved layout and Full screen control.
+
+
+Version 0.2.7 places Acknowledge in its own conditional row above Layout. Mute appears only after Enable sounds succeeds. Muting changes the notice to “Sounds muted • Unmute to allow alerts to play”. A simplified favicon is served at `/favicon.ico` with 16, 24, 32, 48, 64, 128 and 256 pixel entries.

@@ -207,6 +207,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send(json.dumps(self.server.camera_state(viewer)).encode(), 'application/json')
         elif path == '/icon.png':
             self.send((ROOT / 'assets' / 'icon.png').read_bytes(), 'image/png')
+        elif path == '/favicon.ico':
+            self.send((ROOT / 'assets' / 'favicon.ico').read_bytes(), 'image/x-icon')
         elif path in ('/', '/app.js', '/style.css'):
             file = ROOT / 'static' / ('index.html' if path == '/' else path[1:])
             self.send(file.read_bytes(), {'/': 'text/html; charset=utf-8',

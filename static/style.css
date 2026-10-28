@@ -8,7 +8,7 @@
  body:is([data-layout=desktop],[data-layout=large]) main:has(#camera-panel:not([hidden])){
   display:grid;
   grid-template-columns:minmax(0,1fr) clamp(260px,28vw,360px);
-  grid-template-areas:"header header" "status camera" "metrics metrics" "notice notice" "controls controls";
+  grid-template-areas:"header header" "status camera" "metrics metrics" "notice notice" "acknowledge acknowledge" "controls controls";
   column-gap:28px;
   align-items:center;
  }
@@ -28,3 +28,5 @@
  body[data-layout=large] main:has(#camera-panel:not([hidden])) h1{font-size:clamp(3rem,8vw,10rem)}
  body[data-layout=large] #camera-status{font-size:1rem}
 }
+
+.ack-row{grid-area:acknowledge;margin-top:16px}.ack-row:not([hidden])+footer{margin-top:10px}

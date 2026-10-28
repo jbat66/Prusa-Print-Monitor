@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.7
+
+- Place the conditional Acknowledge button in its own row above the Layout controls.
+- Show Mute only after browser sounds have been enabled; show the muted/unmute status immediately.
+- Add a simplified printer logo and a multi-resolution favicon.ico served locally for browser tabs.
+
 ## 0.2.6
 
 - Alphabetize layouts: Across the Room, Compact Corner, Desktop, Mobile.

@@ -133,9 +133,23 @@ test('mobile devices use Mobile and hide Full screen while desktop preserves pre
  assert.equal(desktop.element('layout').value,'large');
  assert.equal(desktop.element('fullscreen').hidden,false);
 });
-test('layout options are alphabetical and Acknowledge follows the selector',()=>{
+test('layout options are alphabetical and Acknowledge is above the controls',()=>{
  const html=fs.readFileSync('static/index.html','utf8');
  const options=[...html.matchAll(/<option[^>]*>([^<]+)<\/option>/g)].map(m=>m[1]);
  assert.deepEqual(options,[...options].sort((a,b)=>a.localeCompare(b)));
- assert.match(html,/<\/select><\/label><button id="ack" hidden disabled>/);
+ assert.match(html,/<div id="ack-row" class="ack-row" hidden><button id="ack" hidden disabled>Acknowledge<\/button><\/div><footer>/);
+});
+
+test('Mute appears after sounds are enabled and updates the notice immediately',async()=>{
+ const d=dashboard();await settle();
+ assert.equal(d.element('mute').hidden,true);
+ await d.element('sound').onclick();
+ assert.equal(d.element('mute').hidden,false);
+ d.element('mute').onclick();
+ assert.equal(d.element('notice').textContent,'Sounds muted \u2022 Unmute to allow alerts to play');
+ assert.equal(d.element('mute').textContent,'Unmute');
+ await d.timers.shift()();
+ assert.equal(d.element('notice').textContent,'Sounds muted \u2022 Unmute to allow alerts to play');
+ d.element('mute').onclick();
+ assert.equal(d.element('notice').textContent,'Sounds ready \u2022 no unacknowledged changes');
 });
