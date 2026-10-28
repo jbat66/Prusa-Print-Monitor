@@ -10,8 +10,6 @@ A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a deskt
 
 ## Install on UNRAID
 
-The GitHub Actions workflow publishes `ghcr.io/jbat66/prusa-print-monitor:latest` after tests pass on `main`. The first image must finish publishing before installing. The GHCR package must be public for UNRAID to pull without registry credentials (GitHub repository → Packages → prusa-print-monitor → Package settings → Change visibility → Public, if needed).
-
 1. Download [`unraid/prusa-print-monitor.xml`](unraid/prusa-print-monitor.xml). Save it on your UNRAID server at `/boot/config/plugins/dockerMan/templates-user/my-prusa-print-monitor.xml`.
 2. In UNRAID, open **Docker → Add Container**, and select **Prusa-Print-Monitor** from the template list.
 3. Replace `X.X.X.X` in `PRINTER_URL` with your printer address and replace `PUT-KEY-HERE` with your PrusaLink password/API key. Default username is `maker`.
