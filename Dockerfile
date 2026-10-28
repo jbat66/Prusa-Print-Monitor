@@ -6,7 +6,7 @@ WORKDIR /app
 COPY app.py /app/app.py
 COPY VERSION /app/VERSION
 COPY static /app/static
-COPY assets/icon.png /app/assets/icon.png
+COPY assets/app-icon.png /app/assets/app-icon.png
 COPY assets/favicon.ico /app/assets/favicon.ico
 USER monitor
 EXPOSE 8085

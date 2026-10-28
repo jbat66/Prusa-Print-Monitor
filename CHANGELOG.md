@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.8
+
+- Show the ready-sounds notice in green; keep muted, disabled, pending and error notices orange.
+- Add the original large application illustration to the top of the README.
+- Use the simplified logo for the web header, UNRAID icon and browser favicon. The UNRAID template now points to assets/app-icon.png.
+
 ## 0.2.7
 
 - Place the conditional Acknowledge button in its own row above the Layout controls.

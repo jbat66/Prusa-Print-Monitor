@@ -145,11 +145,14 @@ test('Mute appears after sounds are enabled and updates the notice immediately',
  assert.equal(d.element('mute').hidden,true);
  await d.element('sound').onclick();
  assert.equal(d.element('mute').hidden,false);
+ assert.equal(d.element('notice').style.color,'#57d69a');
  d.element('mute').onclick();
  assert.equal(d.element('notice').textContent,'Sounds muted \u2022 Unmute to allow alerts to play');
  assert.equal(d.element('mute').textContent,'Unmute');
+ assert.equal(d.element('notice').style.color,'#ffb258');
  await d.timers.shift()();
  assert.equal(d.element('notice').textContent,'Sounds muted \u2022 Unmute to allow alerts to play');
  d.element('mute').onclick();
  assert.equal(d.element('notice').textContent,'Sounds ready \u2022 no unacknowledged changes');
+ assert.equal(d.element('notice').style.color,'#57d69a');
 });

@@ -205,8 +205,8 @@ class Handler(BaseHTTPRequestHandler):
             self.stream_camera(viewer)
         elif path == '/api/camera/status' and self.server.monitor.camera:
             self.send(json.dumps(self.server.camera_state(viewer)).encode(), 'application/json')
-        elif path == '/icon.png':
-            self.send((ROOT / 'assets' / 'icon.png').read_bytes(), 'image/png')
+        elif path in ('/icon.png', '/app-icon.png'):
+            self.send((ROOT / 'assets' / 'app-icon.png').read_bytes(), 'image/png')
         elif path == '/favicon.ico':
             self.send((ROOT / 'assets' / 'favicon.ico').read_bytes(), 'image/x-icon')
         elif path in ('/', '/app.js', '/style.css'):

@@ -5,6 +5,7 @@ The original large application icon is preserved.
 
 - `favicon-source.png`: generated simplified transparent logo.
 - `icon-small.png`: 32px PNG version.
+- `app-icon.png`: 256px PNG used by the web header and UNRAID template.
 - `favicon.ico`: PNG-backed ICO entries at 16, 24, 32, 48, 64, 128 and 256px.
 
 Run `tools/build-favicon.ps1` on Windows to reproduce the PNG size and ICO encoding.

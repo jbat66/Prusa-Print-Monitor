@@ -14,6 +14,7 @@ try {
             $bitmap.Save($stream, [Drawing.Imaging.ImageFormat]::Png)
             $images += ,$stream.ToArray()
             if ($size -eq 32) { $bitmap.Save((Join-Path $assetRoot 'icon-small.png'), [Drawing.Imaging.ImageFormat]::Png) }
+            if ($size -eq 256) { $bitmap.Save((Join-Path $assetRoot 'app-icon.png'), [Drawing.Imaging.ImageFormat]::Png) }
         } finally { $graphics.Dispose(); $bitmap.Dispose(); $stream.Dispose() }
     }
     $file = [IO.File]::Create((Join-Path $assetRoot 'favicon.ico'))

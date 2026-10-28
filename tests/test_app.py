@@ -62,7 +62,7 @@ class Tests(unittest.TestCase):
                 body = json.load(r)
             self.assertNotIn('API_KEY', body)
             self.assertNotIn('camera_url', body)
-            for path in ['/', '/app.js', '/style.css', '/health', '/icon.png', '/favicon.ico']:
+            for path in ['/', '/app.js', '/style.css', '/health', '/icon.png', '/app-icon.png', '/favicon.ico']:
                 with urllib.request.urlopen(base + path) as r:
                     self.assertEqual(r.status, 200)
             for path in ['/camera', '/alert', '/../app.py']:
@@ -134,7 +134,7 @@ class Tests(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
         self.assertEqual(self.monitor.repeat, 60)
-        self.assertEqual(self.monitor.snapshot()['version'], '0.2.7')
+        self.assertEqual(self.monitor.snapshot()['version'], '0.2.8')
 
     def test_digest_challenge(self):
         import hashlib
