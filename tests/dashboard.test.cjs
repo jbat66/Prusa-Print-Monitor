@@ -7,8 +7,8 @@ function dashboard(){
  const element=id=>elements[id] ||= {textContent:'',style:{},value:'desktop',setAttribute(){},removeAttribute(){}};
  const context={document:{getElementById:element,body:{dataset:{},style:{setProperty(){}}}},
  localStorage:{getItem(){},setItem(){}},Audio:class{paused=true;play(){plays++;this.paused=false;return Promise.resolve();}pause(){this.paused=true;}addEventListener(){}},
- Date,Math,String,console,setInterval(){},setTimeout(fn){timers.push(fn);},fetch:async(url)=>({ok:true,json:async()=>url.startsWith('/api/camera/status')?context.cameraStatus:context.next})};
- context.cameraStatus={state:'connecting',message:'Connecting camera…'};
+ Date,Math,String,console,setInterval(){},setTimeout(fn){timers.push(fn);},fetch:async(url)=>({ok:true,json:async()=>url.startsWith('/api/camera/status')?context.cameraResponse:context.next})};
+ context.cameraResponse={state:'connecting',message:'Connecting camera…'};
  context.next={state:'PRINTING',remaining:600,filament:300,connected:true,updated:Date.now()/1000,server_time:Date.now()/1000,event:0,alert:true,camera:true,refresh:60,repeat:30};
  vm.createContext(context);vm.runInContext(fs.readFileSync('static/app.js','utf8'),context);
  return {context,element,timers,plays:()=>plays,run:code=>vm.runInContext(code,context)};
@@ -52,8 +52,8 @@ test('disabled settings share the existing notice row',async()=>{
 
 test('camera status updates without relying on an image load event',async()=>{
  const d=dashboard();await settle();d.element('camera-toggle').onclick();
- d.context.cameraStatus={state:'live',message:'Live camera'};await d.run('cameraStatus()');
+ d.context.cameraResponse={state:'live',message:'Live camera'};await d.run('cameraStatus()');
  assert.equal(d.element('camera-status').textContent,'Live camera');
- d.context.cameraStatus={state:'error',message:'Camera timed out. Check UNRAID container logs and CAMERA_URL.'};await d.run('cameraStatus()');
+ d.context.cameraResponse={state:'error',message:'Camera timed out. Check UNRAID container logs and CAMERA_URL.'};await d.run('cameraStatus()');
  assert.match(d.element('camera-status').textContent,/timed out/);
 });
