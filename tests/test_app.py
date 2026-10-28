@@ -85,27 +85,34 @@ class Tests(unittest.TestCase):
         self.assertEqual(by_target['ALERT_REPEAT_SECONDS'].text, '60')
         self.assertEqual(by_target['8085'].attrib['Type'], 'Port')
         self.assertEqual(by_target['/sounds'].attrib['Name'], 'Sound File')
-        self.assertTrue(by_target['/sounds'].text.endswith('/redalert.mp2'))
+        self.assertTrue(by_target['/sounds'].text.endswith('/redalert.mp3'))
 
     def test_alert_requires_file(self):
         with patch.dict(os.environ, {'ALERT': 'true'}), patch('app.SOUND_PATH', Path('/missing/sound')):
             with self.assertRaisesRegex(ValueError, '/sounds'): Monitor()
 
-    def test_fixed_sound_path_and_conversion_cache(self):
+    def test_fixed_sound_path_serves_mp3_unchanged(self):
         with tempfile.TemporaryDirectory() as folder:
             source = Path(folder) / 'sounds'
-            source.write_bytes(b'example MP2 input')
+            audio = b'ID3-example-MP3-input'
+            source.write_bytes(audio)
             with patch.dict(os.environ, {'ALERT': 'true', 'ALERT_SOUND_FILE': '/ignored'}), patch('app.SOUND_PATH', source):
                 monitor = Monitor()
-            with patch('app.subprocess.run') as decode:
-                decode.return_value.stdout = b'RIFF-example-WAV'
-                self.assertEqual(monitor.alert_audio(), b'RIFF-example-WAV')
-                self.assertEqual(monitor.alert_audio(), b'RIFF-example-WAV')
-                decode.assert_called_once()
-                self.assertIn(str(source), decode.call_args.args[0])
-                self.assertIn('pcm_s16le', decode.call_args.args[0])
+            server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+            server.monitor = monitor
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            try:
+                with patch('app.subprocess.run') as conversion:
+                    url = f'http://127.0.0.1:{server.server_port}/alert'
+                    with urllib.request.urlopen(url) as response:
+                        self.assertEqual(response.headers['Content-Type'], 'audio/mpeg')
+                        self.assertEqual(response.read(), audio)
+                    conversion.assert_not_called()
+            finally:
+                server.shutdown()
+                server.server_close()
         self.assertEqual(self.monitor.repeat, 60)
-        self.assertEqual(self.monitor.snapshot()['version'], '0.2')
+        self.assertEqual(self.monitor.snapshot()['version'], '0.2.1')
 
     def test_digest_challenge(self):
         import hashlib

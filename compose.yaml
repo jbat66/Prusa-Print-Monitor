@@ -19,7 +19,7 @@ services:
       TZ: ${TZ:-America/Denver}
     volumes:
       - type: bind
-        source: /mnt/user/appdata/prusa-print-monitor/sounds/redalert.mp2
+        source: /mnt/user/appdata/prusa-print-monitor/sounds/redalert.mp3
         target: /sounds
         read_only: true
         bind:

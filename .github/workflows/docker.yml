@@ -62,8 +62,8 @@ jobs:
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
           docker pull ghcr.io/jbat66/prusa-print-monitor:latest
-          docker run --rm --entrypoint ffmpeg ghcr.io/jbat66/prusa-print-monitor:latest -f lavfi -i sine=frequency=880:duration=0.2 -c:a mp2 -f mp2 pipe:1 > "$RUNNER_TEMP/alert.mp2"
-          docker run -d --name monitor-smoke -p 127.0.0.1:8085:8085 -e ALERT=true --mount type=bind,source="$RUNNER_TEMP/alert.mp2",target=/sounds,readonly ghcr.io/jbat66/prusa-print-monitor:latest
+          docker run --rm --entrypoint ffmpeg ghcr.io/jbat66/prusa-print-monitor:latest -f lavfi -i sine=frequency=880:duration=0.2 -c:a libmp3lame -f mp3 pipe:1 > "$RUNNER_TEMP/alert.mp3"
+          docker run -d --name monitor-smoke -p 127.0.0.1:8085:8085 -e ALERT=true --mount type=bind,source="$RUNNER_TEMP/alert.mp3",target=/sounds,readonly ghcr.io/jbat66/prusa-print-monitor:latest
           trap 'docker logs monitor-smoke; docker rm -f monitor-smoke' EXIT
           for attempt in $(seq 1 20); do
             if curl --fail http://127.0.0.1:8085/health; then break; fi
@@ -71,7 +71,8 @@ jobs:
           done
           curl --fail http://127.0.0.1:8085/health
           curl --fail http://127.0.0.1:8085/api/status
-          curl --fail http://127.0.0.1:8085/alert -o "$RUNNER_TEMP/alert.wav"
-          python -c "from pathlib import Path; data=Path('$RUNNER_TEMP/alert.wav').read_bytes(); assert data[:4] == b'RIFF' and data[8:12] == b'WAVE' and len(data) > 44"
+          curl --fail -D "$RUNNER_TEMP/alert-headers" http://127.0.0.1:8085/alert -o "$RUNNER_TEMP/served-alert.mp3"
+          cmp "$RUNNER_TEMP/alert.mp3" "$RUNNER_TEMP/served-alert.mp3"
+          grep -i "Content-Type: audio/mpeg" "$RUNNER_TEMP/alert-headers"
           curl --fail http://127.0.0.1:8085/ | grep 'PRINT MONITOR'
           docker exec monitor-smoke ffmpeg -hide_banner -h muxer=mpjpeg 2>&1 | grep boundary_tag

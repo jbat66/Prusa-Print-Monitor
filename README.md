@@ -1,4 +1,4 @@
-# Prusa Print Monitor — version 0.2
+# Prusa Print Monitor — version 0.2.1
 
 A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a desktop corner or a room display. Uses the same HTTP Digest authentication and status fields as `printer-state-display.sh`. No printer credentials are sent to the browser.
 
@@ -34,7 +34,7 @@ All intervals must be positive integers. The server listens on container port 80
 
 ### Sounds
 
-Set **Sound File** to the full path of an existing host audio file, for example `/mnt/user/appdata/prusa-print-monitor/sounds/redalert.mp2`. The template mounts that single file read-only at the fixed container path `/sounds`. There is no `ALERT_SOUND_FILE` environment variable. Ensure UID 10001 can read the file, set `ALERT=true`, then click **Enable sounds** in each browser. FFmpeg converts the source audio (including MP2, MP3 or WAV) to browser-compatible WAV and caches it until the container restarts. Restart after replacing the file. Audio plays on the viewing device, so the NAS needs no sound hardware.
+Set **Sound File** to the full path of an existing host audio file, for example `/mnt/user/appdata/prusa-print-monitor/sounds/redalert.mp3`. The template mounts that single file read-only at the fixed container path `/sounds`. There is no `ALERT_SOUND_FILE` environment variable. Ensure UID 10001 can read the file, set `ALERT=true`, then click **Enable sounds** in each browser. The MP3 file is served directly to the browser without conversion or audio caching. Audio plays on the viewing device, so the NAS needs no sound hardware.
 
 The first successful status is the baseline and does not alert. Every subsequent observed printer state change creates an alert, including changes to PRINTING and IDLE. It repeats at `ALERT_REPEAT_SECONDS` until **Acknowledge**. **Mute** temporarily suppresses sound without acknowledging; unmuting resumes pending alerts. A newer state change requires a new acknowledgment. Each viewing browser manages its own audio and acknowledgment. Reloading establishes a new baseline. Connection failures do not create printer-state alerts. Changes while no browser is open do not sound later. Browsers need an initial user gesture for audio and may suspend background tabs; use an awake foreground display for dependable alerts.
 
@@ -65,11 +65,11 @@ For plain Docker, build with `docker build -t prusa-print-monitor .`, then:
 ```sh
 docker run -d --name prusa-print-monitor --restart unless-stopped \
   -p 8085:8085 --env-file .env \
-  --mount type=bind,source=/mnt/user/appdata/prusa-print-monitor/sounds/redalert.mp2,target=/sounds,readonly \
+  --mount type=bind,source=/mnt/user/appdata/prusa-print-monitor/sounds/redalert.mp3,target=/sounds,readonly \
   prusa-print-monitor
 ```
 
-To run without Docker, Python 3.13 requires no third-party packages: set the environment variables, then run `python app.py`. Install FFmpeg separately if camera or alert support is enabled. For alerts without Docker, place the audio file at `/sounds`. `/health` checks the web service, not the printer; `/api/status` reports printer connectivity separately.
+To run without Docker, Python 3.13 requires no third-party packages: set the environment variables, then run `python app.py`. Install FFmpeg separately if camera support is enabled. For alerts without Docker, place the audio file at `/sounds`. `/health` checks the web service, not the printer; `/api/status` reports printer connectivity separately.
 
 ## Development checks
 
@@ -81,9 +81,9 @@ node --test tests/dashboard.test.cjs
 Tests cover state transitions, repeat/acknowledge/mute behavior, disconnections, invalid payloads, web routes, camera controls, credential isolation, and template variable order. CI builds Linux AMD64 and ARM64 images. To update an UNRAID installation after a new image is published, use **Check for Updates** on its Docker page.
 
 
-## Updating to version 0.2
+## Updating to version 0.2.1
 
-Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2` and `:latest`. The source release is tagged `v0.2`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
+Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.1` and `:latest`. The source release is tagged `v0.2.1`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
 
 Existing UNRAID containers retain their old settings. Update the container configuration using the new template: change the container port to **8085** (and host port to 8085 unless you prefer another port), remove `ALERT_SOUND_FILE`, replace the old Sounds directory mount with **Sound File** pointing to an existing host file and container target `/sounds`, and set `ALERT_REPEAT_SECONDS=60`. The camera URL is now unmasked. Update the image and recreate/apply the container.
 

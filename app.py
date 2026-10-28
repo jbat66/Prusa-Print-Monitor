@@ -47,8 +47,6 @@ class Monitor:
         self.camera_url = os.getenv('CAMERA_URL', 'rtsp://x.x.x.x/live')
         if self.alert and (not self.sound.is_file() or not os.access(self.sound, os.R_OK)):
             raise ValueError('ALERT=true requires a readable sound file mounted at /sounds')
-        self.audio_lock = threading.Lock()
-        self.audio = None
         if self.camera and urlparse(self.camera_url).scheme not in ('rtsp', 'http', 'https'):
             raise ValueError('CAMERA_URL must use RTSP, HTTP or HTTPS')
         passwords = urllib.request.HTTPPasswordMgrWithDefaultRealm()
@@ -83,18 +81,6 @@ class Monitor:
             return dict(self.data, refresh=self.refresh, repeat=self.repeat,
                         alert=self.alert, camera=self.camera, server_time=time.time(), version=VERSION)
 
-    def alert_audio(self):
-        # A file mounted at /sounds has no extension. Decode once so MP2 and
-        # other FFmpeg-supported inputs play as browser-compatible WAV audio.
-        with self.audio_lock:
-            if self.audio is None:
-                result = subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error',
-                    '-i', str(self.sound), '-vn', '-f', 'wav', '-acodec', 'pcm_s16le',
-                    'pipe:1'], capture_output=True, check=True, timeout=30)
-                self.audio = result.stdout
-            return self.audio
-
-
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
@@ -116,9 +102,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send(b'ok', 'text/plain')
         elif path == '/alert' and self.server.monitor.alert:
             try:
-                self.send(self.server.monitor.alert_audio(), 'audio/wav')
-            except (OSError, subprocess.SubprocessError):
-                self.send(b'Unable to decode the sound file mounted at /sounds', 'text/plain', 503)
+                self.send(self.server.monitor.sound.read_bytes(), 'audio/mpeg')
+            except OSError:
+                self.send(b'Unable to read the MP3 file mounted at /sounds', 'text/plain', 503)
         elif path == '/camera' and self.server.monitor.camera:
             self.stream_camera()
         elif path in ('/', '/app.js', '/style.css'):
