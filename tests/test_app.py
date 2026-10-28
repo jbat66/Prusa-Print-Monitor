@@ -106,8 +106,10 @@ class Tests(unittest.TestCase):
         self.assertEqual(by_target['CAMERA_URL'].attrib['Mask'], 'false')
         self.assertEqual(by_target['ALERT_REPEAT_SECONDS'].text, '60')
         self.assertEqual(by_target['8085'].attrib['Type'], 'Port')
-        self.assertEqual(by_target['/sounds'].attrib['Name'], 'Sound File')
-        self.assertTrue(by_target['/sounds'].text.endswith('/redalert.mp3'))
+        self.assertEqual(by_target['/sounds'].attrib['Name'], 'Sounds Folder')
+        self.assertEqual(by_target['/sounds'].attrib['Mode'], 'rw')
+        self.assertEqual(by_target['SOUND_FILE'].attrib['Name'], 'Sound File')
+        self.assertEqual(by_target['SOUND_FILE'].text, '/mnt/user/appdata/prusa-print-monitor/sounds/AlarmSoundEffect.mp3')
 
     def test_alert_requires_file(self):
         with patch.dict(os.environ, {'ALERT': 'true'}), patch('app.SOUND_PATH', Path('/missing/sound')):
@@ -134,7 +136,17 @@ class Tests(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
         self.assertEqual(self.monitor.repeat, 60)
-        self.assertEqual(self.monitor.snapshot()['version'], '0.2.8')
+        self.assertEqual(self.monitor.snapshot()['version'], '0.2.9')
+
+    def test_sound_selector_resolves_under_mounted_folder(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            selected = target / 'AlarmSoundEffect.mp3'
+            selected.write_bytes(b'ID3-local-audio')
+            with patch('app.SOUND_PATH', target), patch.dict(os.environ, {
+                    'ALERT': 'true', 'SOUND_FILE': '/mnt/user/custom/AlarmSoundEffect.mp3'}):
+                monitor = Monitor()
+            self.assertEqual(monitor.sound, selected)
 
     def test_digest_challenge(self):
         import hashlib

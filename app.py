@@ -58,12 +58,16 @@ class Monitor:
         self.url = os.getenv('PRINTER_URL', 'http://X.X.X.X/api/v1/status')
         if urlparse(self.url).scheme not in ('http', 'https'):
             raise ValueError('PRINTER_URL must use HTTP or HTTPS')
-        self.sound = SOUND_PATH
+        # Old file mounts still play; new folder mounts select by basename.
+        # Host paths cannot be accessed inside Docker, so the template's host
+        # filename is resolved under the mounted /sounds directory.
+        self.sound = SOUND_PATH if SOUND_PATH.is_file() else SOUND_PATH / Path(
+            os.getenv('SOUND_FILE', 'AlarmSoundEffect.mp3')).name
         self.alert = os.getenv('ALERT', 'false').lower() == 'true'
         self.camera = os.getenv('CAMERA', 'false').lower() == 'true'
         self.camera_url = os.getenv('CAMERA_URL', 'rtsp://x.x.x.x/live')
         if self.alert and (not self.sound.is_file() or not os.access(self.sound, os.R_OK)):
-            raise ValueError('ALERT=true requires a readable sound file mounted at /sounds')
+            raise ValueError('ALERT=true requires a readable selected MP3 under /sounds; check Sound File and Sounds Folder')
         if self.camera and urlparse(self.camera_url).scheme not in ('rtsp', 'http', 'https'):
             raise ValueError('CAMERA_URL must use RTSP, HTTP or HTTPS')
         passwords = urllib.request.HTTPPasswordMgrWithDefaultRealm()

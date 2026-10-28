@@ -4,5 +4,7 @@ tests
 __pycache__
 *.pyc
 .env
-sounds
+/sounds
 README.md
+!assets/sounds/
+!assets/sounds/*.mp3

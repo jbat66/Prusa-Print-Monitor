@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.9
+
+- Bundle four MP3 alerts and copy missing files into the writable /sounds folder at container startup, preserving existing files.
+- Add a Sounds Folder host mount plus a Sound File selector, defaulting to /mnt/user/appdata/prusa-print-monitor/sounds/AlarmSoundEffect.mp3.
+- Seed sounds before dropping startup privileges to the monitor user; retain playback compatibility with older single-file mounts.
+- Document obtaining the local PrusaLink credential through the printer's Settings tab in Prusa Connect.
+
 ## 0.2.8
 
 - Show the ready-sounds notice in green; keep muted, disabled, pending and error notices orange.

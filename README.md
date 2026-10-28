@@ -1,6 +1,6 @@
 <p align="center"><img src="assets/icon.png" alt="Prusa Print Monitor" width="320"></p>
 
-# Prusa Print Monitor — version 0.2.8
+# Prusa Print Monitor — version 0.2.9
 
 A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a desktop corner or a room display. Uses the same HTTP Digest authentication and status fields as `printer-state-display.sh`. No printer credentials are sent to the browser.
 
@@ -30,13 +30,38 @@ Every template setting is visible in basic view. The printer and feature variabl
 | `CAMERA_URL` | `rtsp://x.x.x.x/live` | Replace with your actual RTSP/HTTP stream. |
 | `ALERT_REPEAT_SECONDS` | `60` | Repeat interval until acknowledged. |
 | `REQUEST_TIMEOUT_SECONDS` | `10` | Printer request timeout. |
+| `SOUND_FILE` | `/mnt/user/appdata/prusa-print-monitor/sounds/AlarmSoundEffect.mp3` | Select the MP3 inside Sounds Folder; the filename is resolved under `/sounds`. |
 | `TZ` | `America/Denver` | Container timezone; UI times use the browser timezone. |
 
 All intervals must be positive integers. The server listens on container port 8085. It exits with a configuration error if alerts are enabled without a readable sound file.
 
+### Get the PrusaLink API key from Prusa Connect
+
+1. Sign in at [Prusa Connect](https://connect.prusa3d.com/) and select your printer.
+2. Open that printer's **Settings** tab and find the **API keys / PrusaLink** section.
+3. Copy the **PrusaLink API key** (the local printer credential), rather than the separate Prusa Connect cloud API key. Paste it into this container's `API_KEY`; put the displayed printer IP into `PRINTER_URL`.
+4. If no local credential is shown, enable PrusaLink on the printer. On supported MK4/XL-style firmware, open **Settings → Network → PrusaLink** on the printer: its password is the local PrusaLink API key, and the default username is `maker`. Generate/reset the local password using the controls offered by your printer/firmware when needed, then copy the new value. Some PrusaLink versions expose credentials through their local web setup instead.
+
+Prusa Connect's Settings tab displays the local credential; generating a separate cloud API key does not create a replacement local PrusaLink password. This dashboard uses HTTP Digest authentication: for older Raspberry Pi PrusaLink installations, use their configured local username/password.
+
+Sources: [Prusa's credentials instructions](https://help.prusa3d.com/wp-content/uploads/generated/prusa-connect-prusalink_1636_guide_222961_en_2026-05-13.pdf), [PrusaLink troubleshooting](https://help.prusa3d.com/article/prusalink-troubleshooting_304411).
+
 ### Sounds
 
-Set **Sound File** to the full path of an existing host audio file, for example `/mnt/user/appdata/prusa-print-monitor/sounds/redalert.mp3`. The template mounts that single file read-only at the fixed container path `/sounds`. There is no `ALERT_SOUND_FILE` environment variable. Ensure UID 10001 can read the file, set `ALERT=true`, then click **Enable sounds** in each browser. The MP3 file is served directly to the browser without conversion or audio caching. Audio plays on the viewing device, so the NAS needs no sound hardware.
+Set **Sounds Folder** to the writable host directory where you want the sound files saved. Default: `/mnt/user/appdata/prusa-print-monitor/sounds`, mounted at container `/sounds`. Each time the container starts, it copies missing bundled files into that directory:
+
+- `AlarmSoundEffect.mp3` (default)
+- `ClockChimes.mp3`
+- `Cuckoo.mp3`
+- `RedAlert.mp3`
+
+Existing files are preserved. The startup helper seeds the directory before dropping to user `monitor` (UID 10001) and starting the dashboard. The four original MP3s are packaged at `/app/assets/sounds` so the host volume does not hide them.
+
+**Sound File** defaults to `/mnt/user/appdata/prusa-print-monitor/sounds/AlarmSoundEffect.mp3`. Select another bundled sound by changing the filename (case-sensitive), or add your own MP3 to Sounds Folder. This entry is the `SOUND_FILE` variable, not a separate file mount: only its filename is resolved inside `/sounds`. When moving the host folder, update **Sounds Folder** and the path displayed in **Sound File**. There is no `ALERT_SOUND_FILE` variable.
+
+Set `ALERT=true` and click **Enable sounds** in each browser. MP3 plays directly on the viewing device without conversion; the NAS needs no sound hardware. The host directory must allow the startup helper to create missing files, and UID 10001 must be able to read them. Files on a network share with root-squash may require host-side permission changes.
+
+To upgrade from 0.2.8 or earlier, remove the old single-file `/sounds` mount and replace it with the new writable **Sounds Folder** directory mount. Add **Sound File** as the selector variable with your selected filename. An older single-file mount can still play its existing audio, but it cannot receive all four bundled files.
 
 The first successful status is the baseline and does not alert. Every subsequent observed printer state change creates an alert, including changes to PRINTING and IDLE. It repeats at `ALERT_REPEAT_SECONDS` until **Acknowledge**. **Mute** temporarily suppresses sound without acknowledging; unmuting resumes pending alerts. A newer state change requires a new acknowledgment. Each viewing browser manages its own audio and acknowledgment. Reloading establishes a new baseline. Connection failures do not create printer-state alerts. Changes while no browser is open do not sound later. Browsers need an initial user gesture for audio and may suspend background tabs; use an awake foreground display for dependable alerts.
 
@@ -57,8 +82,7 @@ git clone https://github.com/jbat66/Prusa-Print-Monitor.git
 cd Prusa-Print-Monitor
 cp .env.example .env
 # Edit .env with your own printer settings.
-# Edit the compose bind source to an existing host sound file, or remove
-# the volumes section when ALERT=false and you do not want to mount a file.
+# Edit the Compose Sounds Folder bind source if using a different host folder.
 docker compose up -d --build
 ```
 
@@ -67,11 +91,11 @@ For plain Docker, build with `docker build -t prusa-print-monitor .`, then:
 ```sh
 docker run -d --name prusa-print-monitor --restart unless-stopped \
   -p 8085:8085 --env-file .env \
-  --mount type=bind,source=/mnt/user/appdata/prusa-print-monitor/sounds/redalert.mp3,target=/sounds,readonly \
+  -v /mnt/user/appdata/prusa-print-monitor/sounds:/sounds:rw \
   prusa-print-monitor
 ```
 
-To run without Docker, Python 3.13 requires no third-party packages: set the environment variables, then run `python app.py`. Install FFmpeg separately if camera support is enabled. For alerts without Docker, place the audio file at `/sounds`. `/health` checks the web service, not the printer; `/api/status` reports printer connectivity separately.
+To run without Docker, Python 3.13 requires no third-party packages: set the environment variables, then run `python app.py`. Install FFmpeg separately if camera support is enabled. For alerts without Docker, create the `/sounds` directory, copy in the MP3s, and set `SOUND_FILE` to your chosen filename. `/health` checks the web service, not the printer; `/api/status` reports printer connectivity separately.
 
 ## Development checks
 
@@ -83,11 +107,11 @@ node --test tests/dashboard.test.cjs
 Tests cover state transitions, repeat/acknowledge/mute behavior, disconnections, invalid payloads, web routes, camera controls, credential isolation, and template variable order. CI builds Linux AMD64 and ARM64 images. To update an UNRAID installation after a new image is published, use **Check for Updates** on its Docker page.
 
 
-## Updating to version 0.2.8
+## Updating to version 0.2.9
 
-Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.8` and `:latest`. The source release is tagged `v0.2.8`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
+Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.9` and `:latest`. The source release is tagged `v0.2.9`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
 
-Existing UNRAID containers retain their old settings. Update the container configuration using the new template: change the container port to **8085** (and host port to 8085 unless you prefer another port), remove `ALERT_SOUND_FILE`, replace the old Sounds directory mount with **Sound File** pointing to an existing host file and container target `/sounds`, and set `ALERT_REPEAT_SECONDS=60`. The camera URL is now unmasked. Update the image and recreate/apply the container.
+Existing UNRAID containers retain their old settings. Update the container configuration using the new template: change the container port to **8085** (and host port to 8085 unless you prefer another port), remove `ALERT_SOUND_FILE`, replace the old single-file mount with a writable **Sounds Folder** directory at `/sounds`, and set **Sound File** to `/mnt/user/appdata/prusa-print-monitor/sounds/AlarmSoundEffect.mp3`, and set `ALERT_REPEAT_SECONDS=60`. The camera URL is now unmasked. Update the image and recreate/apply the container.
 
 The existing notice row reports whether alerts, camera, or both are disabled, without adding another row. When both features are enabled, audio readiness or pending alerts use that same notice.
 

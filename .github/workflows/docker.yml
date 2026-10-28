@@ -63,7 +63,9 @@ jobs:
         run: |
           docker pull ghcr.io/jbat66/prusa-print-monitor:latest
           docker run --rm --entrypoint ffmpeg ghcr.io/jbat66/prusa-print-monitor:latest -f lavfi -i sine=frequency=880:duration=0.2 -c:a libmp3lame -f mp3 pipe:1 > "$RUNNER_TEMP/alert.mp3"
-          docker run -d --name monitor-smoke -p 127.0.0.1:8085:8085 -e ALERT=true --mount type=bind,source="$RUNNER_TEMP/alert.mp3",target=/sounds,readonly ghcr.io/jbat66/prusa-print-monitor:latest
+          mkdir -p "$RUNNER_TEMP/sounds"
+          cp "$RUNNER_TEMP/alert.mp3" "$RUNNER_TEMP/sounds/Custom.mp3"
+          docker run -d --name monitor-smoke -p 127.0.0.1:8085:8085 -e ALERT=true -e SOUND_FILE=Custom.mp3 --mount type=bind,source="$RUNNER_TEMP/sounds",target=/sounds ghcr.io/jbat66/prusa-print-monitor:latest
           trap 'docker logs monitor-smoke; docker rm -f monitor-smoke' EXIT
           for attempt in $(seq 1 20); do
             if curl --fail http://127.0.0.1:8085/health; then break; fi
@@ -71,6 +73,10 @@ jobs:
           done
           curl --fail http://127.0.0.1:8085/health
           curl --fail http://127.0.0.1:8085/api/status
+          for sound in AlarmSoundEffect ClockChimes Cuckoo RedAlert; do
+            cmp "assets/sounds/$sound.mp3" "$RUNNER_TEMP/sounds/$sound.mp3"
+          done
+          docker exec monitor-smoke python -c "from pathlib import Path; assert 'Uid:\t10001\t10001\t10001\t10001' in Path('/proc/1/status').read_text()"
           curl --fail -D "$RUNNER_TEMP/alert-headers" http://127.0.0.1:8085/alert -o "$RUNNER_TEMP/served-alert.mp3"
           cmp "$RUNNER_TEMP/alert.mp3" "$RUNNER_TEMP/served-alert.mp3"
           grep -i "Content-Type: audio/mpeg" "$RUNNER_TEMP/alert-headers"

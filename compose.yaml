@@ -17,12 +17,11 @@ services:
       ALERT_REPEAT_SECONDS: ${ALERT_REPEAT_SECONDS:-60}
       REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-10}
       TZ: ${TZ:-America/Denver}
+      SOUND_FILE: ${SOUND_FILE:-/mnt/user/appdata/prusa-print-monitor/sounds/AlarmSoundEffect.mp3}
     volumes:
       - type: bind
-        source: /mnt/user/appdata/prusa-print-monitor/sounds/redalert.mp3
+        source: /mnt/user/appdata/prusa-print-monitor/sounds
         target: /sounds
-        read_only: true
-        bind:
-          create_host_path: false
+        read_only: false
     security_opt:
       - no-new-privileges:true

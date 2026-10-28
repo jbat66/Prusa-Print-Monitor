@@ -5,11 +5,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
 WORKDIR /app
 COPY app.py /app/app.py
 COPY VERSION /app/VERSION
+COPY startup.py sound_defaults.py /app/
+COPY assets/sounds/ /app/assets/sounds/
 COPY static /app/static
 COPY assets/app-icon.png /app/assets/app-icon.png
 COPY assets/favicon.ico /app/assets/favicon.ico
-USER monitor
+RUN mkdir -p /sounds && chown monitor:monitor /sounds
 EXPOSE 8085
 STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8085/health', timeout=3)"
+ENTRYPOINT ["python", "-u", "startup.py"]
 CMD ["python", "-u", "app.py"]
