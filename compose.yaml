@@ -1,0 +1,24 @@
+services:
+  prusa-print-monitor:
+    build: .
+    image: ghcr.io/jbat66/prusa-print-monitor:latest
+    container_name: prusa-print-monitor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PRINTER_URL: ${PRINTER_URL:-http://X.X.X.X/api/v1/status}
+      API_USER: ${API_USER:-maker}
+      API_KEY: ${API_KEY:-PUT-KEY-HERE}
+      REFRESH_SECONDS: ${REFRESH_SECONDS:-60}
+      ALERT_SOUND_FILE: ${ALERT_SOUND_FILE:-/sounds/alert.mp3}
+      ALERT: ${ALERT:-false}
+      CAMERA: ${CAMERA:-false}
+      CAMERA_URL: ${CAMERA_URL:-rtsp://x.x.x.x/live}
+      ALERT_REPEAT_SECONDS: ${ALERT_REPEAT_SECONDS:-30}
+      REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-10}
+      TZ: ${TZ:-America/Denver}
+    volumes:
+      - /mnt/user/appdata/prusa-print-monitor/sounds:/sounds:ro
+    security_opt:
+      - no-new-privileges:true

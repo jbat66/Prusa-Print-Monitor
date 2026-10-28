@@ -1,0 +1,151 @@
+"""Small LAN-only PrusaLink monitor. Credentials never leave this process."""
+import json
+import math
+import os
+from pathlib import Path
+import subprocess
+import threading
+import time
+import urllib.request
+from urllib.parse import urlparse
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+ROOT = Path(__file__).parent
+
+
+def seconds(value):
+    if isinstance(value, bool) or not isinstance(value, (float, int)):
+        return None
+    return value if math.isfinite(value) and value >= 0 else None
+
+
+def normalize(data):
+    state = data['printer']['state']
+    if not isinstance(state, str) or not state.strip():
+        raise ValueError('Missing printer state')
+    job = data.get('job') or {}
+    return dict(state=state.upper(), remaining=seconds(job.get('time_remaining')),
+                filament=seconds(job.get('filament_change_in')))
+
+
+class Monitor:
+    def __init__(self):
+        self.refresh = int(os.getenv('REFRESH_SECONDS', '60'))
+        self.repeat = int(os.getenv('ALERT_REPEAT_SECONDS', '30'))
+        self.timeout = int(os.getenv('REQUEST_TIMEOUT_SECONDS', '10'))
+        if min(self.refresh, self.repeat, self.timeout) < 1:
+            raise ValueError('Intervals must be positive integers')
+        self.url = os.getenv('PRINTER_URL', 'http://X.X.X.X/api/v1/status')
+        if urlparse(self.url).scheme not in ('http', 'https'):
+            raise ValueError('PRINTER_URL must use HTTP or HTTPS')
+        self.sound = Path(os.getenv('ALERT_SOUND_FILE', '/sounds/alert.mp3'))
+        self.alert = os.getenv('ALERT', 'false').lower() == 'true'
+        self.camera = os.getenv('CAMERA', 'false').lower() == 'true'
+        self.camera_url = os.getenv('CAMERA_URL', 'rtsp://x.x.x.x/live')
+        if self.alert and not self.sound.is_file():
+            raise ValueError('ALERT=true requires a readable ALERT_SOUND_FILE')
+        if self.camera and urlparse(self.camera_url).scheme not in ('rtsp', 'http', 'https'):
+            raise ValueError('CAMERA_URL must use RTSP, HTTP or HTTPS')
+        passwords = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+        passwords.add_password(None, self.url, os.getenv('API_USER', 'maker'),
+                               os.getenv('API_KEY', 'PUT-KEY-HERE'))
+        self.opener = urllib.request.build_opener(urllib.request.HTTPDigestAuthHandler(passwords))
+        self.lock = threading.Lock()
+        self.data = dict(state='UNKNOWN', remaining=None, filament=None,
+                         connected=False, updated=None, attempted=None, event=0)
+
+    def poll(self):
+        try:
+            with self.opener.open(self.url, timeout=self.timeout) as response:
+                result = normalize(json.load(response))
+            with self.lock:
+                event = self.data['event'] + int(self.data['updated'] is not None and
+                                                result['state'] != self.data['state'])
+                self.data.update(result, connected=True, updated=time.time(),
+                                 attempted=time.time(), event=event)
+        except Exception:
+            # Never expose upstream URLs, credentials or response bodies.
+            with self.lock:
+                self.data.update(connected=False, attempted=time.time())
+
+    def run(self):
+        while True:
+            self.poll()
+            time.sleep(self.refresh)
+
+    def snapshot(self):
+        with self.lock:
+            return dict(self.data, refresh=self.refresh, repeat=self.repeat,
+                        alert=self.alert, camera=self.camera, server_time=time.time())
+
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, *_):
+        pass
+
+    def send(self, body, content_type, status=200):
+        self.send_response(status)
+        self.send_header('Content-Type', content_type)
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        path = self.path.split('?')[0]
+        if path == '/api/status':
+            self.send(json.dumps(self.server.monitor.snapshot()).encode(), 'application/json')
+        elif path == '/health':
+            self.send(b'ok', 'text/plain')
+        elif path == '/alert' and self.server.monitor.alert:
+            import mimetypes
+            self.send(self.server.monitor.sound.read_bytes(),
+                      mimetypes.guess_type(str(self.server.monitor.sound))[0] or 'audio/mpeg')
+        elif path == '/camera' and self.server.monitor.camera:
+            self.stream_camera()
+        elif path in ('/', '/app.js', '/style.css'):
+            file = ROOT / 'static' / ('index.html' if path == '/' else path[1:])
+            self.send(file.read_bytes(), {'/': 'text/html; charset=utf-8',
+                      '/app.js': 'text/javascript', '/style.css': 'text/css'}[path])
+        else:
+            self.send(b'Not found', 'text/plain', 404)
+
+    def stream_camera(self):
+        if not self.server.camera_slots.acquire(blocking=False):
+            self.send(b'Camera viewer limit reached', 'text/plain', 503)
+            return
+        process = None
+        try:
+            url = self.server.monitor.camera_url
+            args = ['ffmpeg', '-nostdin', '-loglevel', 'error', '-rw_timeout', '10000000']
+            if urlparse(url).scheme == 'rtsp':
+                args += ['-rtsp_transport', 'tcp']
+            process = subprocess.Popen(args + ['-i', url, '-an', '-vf',
+                'fps=3,scale=960:-2', '-f', 'mpjpeg', '-boundary_tag', 'frame', 'pipe:1'],
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            self.send_response(200)
+            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
+            while chunk := process.stdout.read1(65536):
+                self.wfile.write(chunk)
+                self.wfile.flush()
+        except (OSError, BrokenPipeError):
+            pass
+        finally:
+            if process:
+                process.kill()
+                process.wait()
+                process.stdout.close()
+            self.server.camera_slots.release()
+
+
+if __name__ == '__main__':
+    monitor = Monitor()
+    server = ThreadingHTTPServer(('0.0.0.0', 8080), Handler)
+    server.monitor = monitor
+    server.camera_slots = threading.BoundedSemaphore(4)
+    threading.Thread(target=monitor.run, daemon=True).start()
+    print('Prusa Print Monitor listening on port 8080', flush=True)
+    server.serve_forever()

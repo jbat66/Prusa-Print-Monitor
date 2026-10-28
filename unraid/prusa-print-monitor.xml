@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Prusa-Print-Monitor</Name>
+  <Repository>ghcr.io/jbat66/prusa-print-monitor:latest</Repository>
+  <Registry>https://github.com/jbat66/Prusa-Print-Monitor/pkgs/container/prusa-print-monitor</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/jbat66/Prusa-Print-Monitor/issues</Support>
+  <Project>https://github.com/jbat66/Prusa-Print-Monitor</Project>
+  <Overview>PrusaLink status dashboard with compact, mobile and across-the-room layouts. Change PRINTER_URL and API_KEY before starting. Optional browser alerts require an audio file in the Sounds path and clicking Enable sounds. Optional RTSP/HTTP camera is converted by FFmpeg. Keep this dashboard on your trusted LAN; it has no login.</Overview>
+  <Category>Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <ExtraParams>--security-opt=no-new-privileges:true</ExtraParams>
+  <Config Name="Printer status URL" Target="PRINTER_URL" Default="http://X.X.X.X/api/v1/status" Mode="" Description="REQUIRED: Replace X.X.X.X with your printer IP address. Keep /api/v1/status." Type="Variable" Display="always" Required="true" Mask="false">http://X.X.X.X/api/v1/status</Config>
+  <Config Name="API user" Target="API_USER" Default="maker" Mode="" Description="PrusaLink HTTP Digest username. Default: maker." Type="Variable" Display="always" Required="true" Mask="false">maker</Config>
+  <Config Name="API key" Target="API_KEY" Default="PUT-KEY-HERE" Mode="" Description="REQUIRED: Replace PUT-KEY-HERE with your printer PrusaLink API key/password." Type="Variable" Display="always" Required="true" Mask="true">PUT-KEY-HERE</Config>
+  <Config Name="Printer refresh seconds" Target="REFRESH_SECONDS" Default="60" Mode="" Description="Seconds between printer polls. Positive integer; default 60." Type="Variable" Display="always" Required="true" Mask="false">60</Config>
+  <Config Name="Alert sound file" Target="ALERT_SOUND_FILE" Default="/sounds/alert.mp3" Mode="" Description="Container path to a browser-compatible MP3 or WAV file. Put alert.mp3 in the Sounds host folder or change this path. Required when ALERT=true." Type="Variable" Display="always" Required="false" Mask="false">/sounds/alert.mp3</Config>
+  <Config Name="Enable alerts" Target="ALERT" Default="false" Mode="" Description="Set true to enable browser alerts. You MUST supply a readable file using ALERT_SOUND_FILE and the Sounds mount. Click Enable sounds in each browser." Type="Variable" Display="always" Required="true" Mask="false">false</Config>
+  <Config Name="Enable camera" Target="CAMERA" Default="false" Mode="" Description="Set true to allow camera viewing. You MUST supply your camera stream URL using CAMERA_URL. Toggle the feed in the web interface." Type="Variable" Display="always" Required="true" Mask="false">false</Config>
+  <Config Name="Camera stream URL" Target="CAMERA_URL" Default="rtsp://x.x.x.x/live" Mode="" Description="Replace this example with your actual RTSP or HTTP camera stream URL. Used only when CAMERA=true. Credentials stay on the server." Type="Variable" Display="always" Required="false" Mask="true">rtsp://x.x.x.x/live</Config>
+  <Config Name="Alert repeat seconds" Target="ALERT_REPEAT_SECONDS" Default="30" Mode="" Description="Repeat unacknowledged alerts at this interval. Positive integer." Type="Variable" Display="always" Required="true" Mask="false">30</Config>
+  <Config Name="Printer request timeout" Target="REQUEST_TIMEOUT_SECONDS" Default="10" Mode="" Description="Maximum seconds for a printer request. Positive integer." Type="Variable" Display="always" Required="true" Mask="false">10</Config>
+  <Config Name="Timezone" Target="TZ" Default="America/Denver" Mode="" Description="Container timezone. Estimated finish and last updated are displayed in each browser's local timezone." Type="Variable" Display="always" Required="true" Mask="false">America/Denver</Config>
+  <Config Name="Web interface port" Target="8080" Default="8080" Mode="tcp" Description="Host port for the web dashboard. Change if 8080 is already used." Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Sounds" Target="/sounds" Default="/mnt/user/appdata/prusa-print-monitor/sounds" Mode="ro" Description="Folder containing your alert audio. Container UID 10001 needs read permission. Map a folder, not a single file." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/prusa-print-monitor/sounds</Config>
+</Container>

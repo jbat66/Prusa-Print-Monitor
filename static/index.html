@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prusa Print Monitor</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body><main><header><span class="brand">◈ PRUSA <small>PRINT MONITOR</small></span><span id="connection" role="status">Connecting…</span></header>
+<section class="hero"><p class="eyebrow">PRINTER STATUS</p><h1 id="state">UNKNOWN</h1><p id="freshness">Waiting for the first update</p></section>
+<section class="metrics"><article><p class="eyebrow">TIME REMAINING</p><strong id="remaining">—</strong><p>Estimated finish <b id="finish">—</b></p></article><article><p class="eyebrow">NEXT FILAMENT CHANGE</p><strong id="filament">—</strong><p id="filament-note">Waiting for printer</p></article></section>
+<p id="notice" role="status">Alerts disabled</p><section id="camera-panel" hidden><img id="camera" alt="Live printer camera"><p id="camera-status">Connecting camera…</p></section>
+<footer><label>Layout <select id="layout"><option value="desktop">Desktop</option><option value="compact">Compact corner</option><option value="mobile">Mobile</option><option value="large">Across the room</option></select></label><button id="sound">Enable sounds</button><button id="mute">Mute</button><button id="ack">Acknowledge</button><button id="camera-toggle">Camera off</button><button id="fullscreen">Full screen</button></footer></main></body></html>
