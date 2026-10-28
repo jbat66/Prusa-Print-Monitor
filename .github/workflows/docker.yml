@@ -62,7 +62,7 @@ jobs:
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
           docker pull ghcr.io/jbat66/prusa-print-monitor:latest
-          docker run --rm -v "$RUNNER_TEMP:/output" --entrypoint ffmpeg ghcr.io/jbat66/prusa-print-monitor:latest -f lavfi -i sine=frequency=880:duration=0.2 -c:a mp2 /output/alert.mp2
+          docker run --rm --entrypoint ffmpeg ghcr.io/jbat66/prusa-print-monitor:latest -f lavfi -i sine=frequency=880:duration=0.2 -c:a mp2 -f mp2 pipe:1 > "$RUNNER_TEMP/alert.mp2"
           docker run -d --name monitor-smoke -p 127.0.0.1:8085:8085 -e ALERT=true --mount type=bind,source="$RUNNER_TEMP/alert.mp2",target=/sounds,readonly ghcr.io/jbat66/prusa-print-monitor:latest
           trap 'docker logs monitor-smoke; docker rm -f monitor-smoke' EXIT
           for attempt in $(seq 1 20); do
