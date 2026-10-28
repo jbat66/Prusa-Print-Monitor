@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.12
+
+- Remove the Back to status button. Double-click/double-tap the camera again or press Escape to return from camera focus mode.
+
 ## 0.2.11
 
 - Double-click/double-tap the camera to show a camera-focused view at the selected layout's full width, keeping the normal header, sound notice and footer controls.

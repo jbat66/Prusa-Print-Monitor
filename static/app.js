@@ -97,13 +97,11 @@ $('camera-toggle').onclick=()=>{cameraOn=!cameraOn;$('camera-panel').hidden=!cam
 function setCameraFocus(focused){
  focused=focused&&cameraOn;
  document.body.dataset.cameraFocus=String(focused);
- $('camera-back').hidden=!focused;
  $('camera').setAttribute('aria-expanded',String(focused));
  $('camera').setAttribute('aria-label',focused?'Return to printer status view':'Expand camera view');
 }
 $('camera').ondblclick=()=>setCameraFocus(document.body.dataset.cameraFocus!=='true');
 $('camera').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();$('camera').ondblclick();}};
-$('camera-back').onclick=()=>setCameraFocus(false);
 document.addEventListener?.('keydown',event=>{if(event.key==='Escape')setCameraFocus(false);});
 async function cameraStatus(){
  const viewer=cameraViewer;

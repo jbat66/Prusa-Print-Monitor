@@ -136,7 +136,7 @@ class Tests(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
         self.assertEqual(self.monitor.repeat, 60)
-        self.assertEqual(self.monitor.snapshot()['version'], '0.2.11')
+        self.assertEqual(self.monitor.snapshot()['version'], '0.2.12')
 
     def test_sound_selector_resolves_under_mounted_folder(self):
         with tempfile.TemporaryDirectory() as directory:

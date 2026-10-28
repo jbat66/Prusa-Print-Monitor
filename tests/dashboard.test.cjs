@@ -192,11 +192,11 @@ test('camera focus toggles without restarting the stream and keeps the selected 
  const source=d.element('camera').src;
  d.element('camera').ondblclick();
  assert.equal(d.context.document.body.dataset.cameraFocus,'true');
- assert.equal(d.element('camera-back').hidden,false);
+ assert.ok(!fs.readFileSync('static/index.html','utf8').includes('camera-back'));
  d.element('layout').value='large';d.element('layout').onchange();
  assert.equal(d.context.document.body.dataset.layout,'large');
  assert.equal(d.element('camera').src,source);
- d.element('camera-back').onclick();assert.equal(d.context.document.body.dataset.cameraFocus,'false');
+ d.element('camera').ondblclick();assert.equal(d.context.document.body.dataset.cameraFocus,'false');
  d.element('camera').ondblclick();d.element('camera-toggle').onclick();
  assert.equal(d.context.document.body.dataset.cameraFocus,'false');
 });
