@@ -50,3 +50,17 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Smoke test published container
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          docker pull ghcr.io/jbat66/prusa-print-monitor:latest
+          docker run -d --name monitor-smoke -p 127.0.0.1:8080:8080 ghcr.io/jbat66/prusa-print-monitor:latest
+          trap 'docker logs monitor-smoke; docker rm -f monitor-smoke' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail http://127.0.0.1:8080/health; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:8080/health
+          curl --fail http://127.0.0.1:8080/api/status
+          curl --fail http://127.0.0.1:8080/ | grep 'PRINT MONITOR'
+          docker exec monitor-smoke ffmpeg -hide_banner -h muxer=mpjpeg 2>&1 | grep boundary_tag
