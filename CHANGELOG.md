@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.5
+
+- Place the camera to the right of Printer Status in Desktop and Across the Room layouts on wide screens.
+- Use a smaller Desktop preview (up to 360px wide) and a larger Across the Room preview (up to 640px wide).
+- Preserve the existing Compact Corner and Mobile camera placement. Narrow screens continue to stack the feed.
+- Change layout through CSS without restarting the camera stream.
+
 ## 0.2.4
 
 - Fix RTSP camera startup by using the RTSP timeout option without the incompatible rw_timeout option. Retain rw_timeout for HTTP/HTTPS cameras.

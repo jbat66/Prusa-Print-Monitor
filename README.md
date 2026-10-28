@@ -1,4 +1,4 @@
-# Prusa Print Monitor — version 0.2.4
+# Prusa Print Monitor — version 0.2.5
 
 A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a desktop corner or a room display. Uses the same HTTP Digest authentication and status fields as `printer-state-display.sh`. No printer credentials are sent to the browser.
 
@@ -81,9 +81,9 @@ node --test tests/dashboard.test.cjs
 Tests cover state transitions, repeat/acknowledge/mute behavior, disconnections, invalid payloads, web routes, camera controls, credential isolation, and template variable order. CI builds Linux AMD64 and ARM64 images. To update an UNRAID installation after a new image is published, use **Check for Updates** on its Docker page.
 
 
-## Updating to version 0.2.4
+## Updating to version 0.2.5
 
-Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.4` and `:latest`. The source release is tagged `v0.2.4`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
+Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.5` and `:latest`. The source release is tagged `v0.2.5`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
 
 Existing UNRAID containers retain their old settings. Update the container configuration using the new template: change the container port to **8085** (and host port to 8085 unless you prefer another port), remove `ALERT_SOUND_FILE`, replace the old Sounds directory mount with **Sound File** pointing to an existing host file and container target `/sounds`, and set `ALERT_REPEAT_SECONDS=60`. The camera URL is now unmasked. Update the image and recreate/apply the container.
 
@@ -103,3 +103,6 @@ The dashboard checks the camera session status every two seconds and reports a f
 
 
 Version 0.2.4 fixes the RTSP startup error `Option rw_timeout not found`. RTSP cameras use the demuxer-specific `timeout` option; HTTP/HTTPS streams retain `rw_timeout`. No CAMERA_URL change is required for this fix.
+
+
+Version 0.2.5 positions the enabled camera beside Printer Status on wide screens in Desktop (up to 360px wide) and Across the Room (up to 640px wide). Compact Corner and Mobile keep the camera below the status/metrics, and narrow screens stack the content. Changing layouts preserves the running camera stream.
