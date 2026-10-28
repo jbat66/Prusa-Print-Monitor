@@ -11,6 +11,9 @@ from urllib.parse import urlparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = Path(__file__).parent
+VERSION = (ROOT / 'VERSION').read_text().strip()
+PORT = 8085
+SOUND_PATH = Path('/sounds')
 
 
 def seconds(value):
@@ -31,19 +34,21 @@ def normalize(data):
 class Monitor:
     def __init__(self):
         self.refresh = int(os.getenv('REFRESH_SECONDS', '60'))
-        self.repeat = int(os.getenv('ALERT_REPEAT_SECONDS', '30'))
+        self.repeat = int(os.getenv('ALERT_REPEAT_SECONDS', '60'))
         self.timeout = int(os.getenv('REQUEST_TIMEOUT_SECONDS', '10'))
         if min(self.refresh, self.repeat, self.timeout) < 1:
             raise ValueError('Intervals must be positive integers')
         self.url = os.getenv('PRINTER_URL', 'http://X.X.X.X/api/v1/status')
         if urlparse(self.url).scheme not in ('http', 'https'):
             raise ValueError('PRINTER_URL must use HTTP or HTTPS')
-        self.sound = Path(os.getenv('ALERT_SOUND_FILE', '/sounds/alert.mp3'))
+        self.sound = SOUND_PATH
         self.alert = os.getenv('ALERT', 'false').lower() == 'true'
         self.camera = os.getenv('CAMERA', 'false').lower() == 'true'
         self.camera_url = os.getenv('CAMERA_URL', 'rtsp://x.x.x.x/live')
-        if self.alert and not self.sound.is_file():
-            raise ValueError('ALERT=true requires a readable ALERT_SOUND_FILE')
+        if self.alert and (not self.sound.is_file() or not os.access(self.sound, os.R_OK)):
+            raise ValueError('ALERT=true requires a readable sound file mounted at /sounds')
+        self.audio_lock = threading.Lock()
+        self.audio = None
         if self.camera and urlparse(self.camera_url).scheme not in ('rtsp', 'http', 'https'):
             raise ValueError('CAMERA_URL must use RTSP, HTTP or HTTPS')
         passwords = urllib.request.HTTPPasswordMgrWithDefaultRealm()
@@ -76,7 +81,18 @@ class Monitor:
     def snapshot(self):
         with self.lock:
             return dict(self.data, refresh=self.refresh, repeat=self.repeat,
-                        alert=self.alert, camera=self.camera, server_time=time.time())
+                        alert=self.alert, camera=self.camera, server_time=time.time(), version=VERSION)
+
+    def alert_audio(self):
+        # A file mounted at /sounds has no extension. Decode once so MP2 and
+        # other FFmpeg-supported inputs play as browser-compatible WAV audio.
+        with self.audio_lock:
+            if self.audio is None:
+                result = subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error',
+                    '-i', str(self.sound), '-vn', '-f', 'wav', '-acodec', 'pcm_s16le',
+                    'pipe:1'], capture_output=True, check=True, timeout=30)
+                self.audio = result.stdout
+            return self.audio
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -99,9 +115,10 @@ class Handler(BaseHTTPRequestHandler):
         elif path == '/health':
             self.send(b'ok', 'text/plain')
         elif path == '/alert' and self.server.monitor.alert:
-            import mimetypes
-            self.send(self.server.monitor.sound.read_bytes(),
-                      mimetypes.guess_type(str(self.server.monitor.sound))[0] or 'audio/mpeg')
+            try:
+                self.send(self.server.monitor.alert_audio(), 'audio/wav')
+            except (OSError, subprocess.SubprocessError):
+                self.send(b'Unable to decode the sound file mounted at /sounds', 'text/plain', 503)
         elif path == '/camera' and self.server.monitor.camera:
             self.stream_camera()
         elif path in ('/', '/app.js', '/style.css'):
@@ -143,9 +160,9 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == '__main__':
     monitor = Monitor()
-    server = ThreadingHTTPServer(('0.0.0.0', 8080), Handler)
+    server = ThreadingHTTPServer(('0.0.0.0', PORT), Handler)
     server.monitor = monitor
     server.camera_slots = threading.BoundedSemaphore(4)
     threading.Thread(target=monitor.run, daemon=True).start()
-    print('Prusa Print Monitor listening on port 8080', flush=True)
+    print(f'Prusa Print Monitor {VERSION} listening on port {PORT}', flush=True)
     server.serve_forever()

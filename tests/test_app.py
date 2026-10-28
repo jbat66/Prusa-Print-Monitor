@@ -2,6 +2,8 @@ import json
 import os
 import threading
 import unittest
+import tempfile
+from pathlib import Path
 import urllib.request
 import xml.etree.ElementTree as ET
 from unittest.mock import patch
@@ -73,14 +75,37 @@ class Tests(unittest.TestCase):
     def test_template_order_and_visibility(self):
         configs = ET.parse('unraid/prusa-print-monitor.xml').getroot().findall('Config')
         variables = [c for c in configs if c.attrib['Type'] == 'Variable']
-        self.assertEqual([c.attrib['Target'] for c in variables[:8]],
+        self.assertEqual([c.attrib['Target'] for c in variables[:7]],
             ['PRINTER_URL', 'API_USER', 'API_KEY', 'REFRESH_SECONDS',
-             'ALERT_SOUND_FILE', 'ALERT', 'CAMERA', 'CAMERA_URL'])
+             'ALERT', 'CAMERA', 'CAMERA_URL'])
         self.assertTrue(all(c.attrib['Display'] == 'always' for c in configs))
+        by_target = {c.attrib['Target']: c for c in configs}
+        self.assertNotIn('ALERT_SOUND_FILE', by_target)
+        self.assertEqual(by_target['CAMERA_URL'].attrib['Mask'], 'false')
+        self.assertEqual(by_target['ALERT_REPEAT_SECONDS'].text, '60')
+        self.assertEqual(by_target['8085'].attrib['Type'], 'Port')
+        self.assertEqual(by_target['/sounds'].attrib['Name'], 'Sound File')
+        self.assertTrue(by_target['/sounds'].text.endswith('/redalert.mp2'))
 
     def test_alert_requires_file(self):
-        with patch.dict(os.environ, {'ALERT': 'true', 'ALERT_SOUND_FILE': '/missing/alert.mp3'}):
-            with self.assertRaises(ValueError): Monitor()
+        with patch.dict(os.environ, {'ALERT': 'true'}), patch('app.SOUND_PATH', Path('/missing/sound')):
+            with self.assertRaisesRegex(ValueError, '/sounds'): Monitor()
+
+    def test_fixed_sound_path_and_conversion_cache(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'sounds'
+            source.write_bytes(b'example MP2 input')
+            with patch.dict(os.environ, {'ALERT': 'true', 'ALERT_SOUND_FILE': '/ignored'}), patch('app.SOUND_PATH', source):
+                monitor = Monitor()
+            with patch('app.subprocess.run') as decode:
+                decode.return_value.stdout = b'RIFF-example-WAV'
+                self.assertEqual(monitor.alert_audio(), b'RIFF-example-WAV')
+                self.assertEqual(monitor.alert_audio(), b'RIFF-example-WAV')
+                decode.assert_called_once()
+                self.assertIn(str(source), decode.call_args.args[0])
+                self.assertIn('pcm_s16le', decode.call_args.args[0])
+        self.assertEqual(self.monitor.repeat, 60)
+        self.assertEqual(self.monitor.snapshot()['version'], '0.2')
 
     def test_digest_challenge(self):
         import hashlib

@@ -36,31 +36,42 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Read application version
+        id: version
+        run: echo "value=$(cat VERSION)" >> "$GITHUB_OUTPUT"
       - uses: docker/metadata-action@v5
         id: meta
         with:
           images: ghcr.io/jbat66/prusa-print-monitor
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
+            type=raw,value=${{ steps.version.outputs.value }},enable={{is_default_branch}}
+            type=match,pattern=v(.*),group=1
       - uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.version=${{ steps.version.outputs.value }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Smoke test published container
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
           docker pull ghcr.io/jbat66/prusa-print-monitor:latest
-          docker run -d --name monitor-smoke -p 127.0.0.1:8080:8080 ghcr.io/jbat66/prusa-print-monitor:latest
+          docker run --rm -v "$RUNNER_TEMP:/output" --entrypoint ffmpeg ghcr.io/jbat66/prusa-print-monitor:latest -f lavfi -i sine=frequency=880:duration=0.2 -c:a mp2 /output/alert.mp2
+          docker run -d --name monitor-smoke -p 127.0.0.1:8085:8085 -e ALERT=true --mount type=bind,source="$RUNNER_TEMP/alert.mp2",target=/sounds,readonly ghcr.io/jbat66/prusa-print-monitor:latest
           trap 'docker logs monitor-smoke; docker rm -f monitor-smoke' EXIT
           for attempt in $(seq 1 20); do
-            if curl --fail http://127.0.0.1:8080/health; then break; fi
+            if curl --fail http://127.0.0.1:8085/health; then break; fi
             sleep 1
           done
-          curl --fail http://127.0.0.1:8080/health
-          curl --fail http://127.0.0.1:8080/api/status
-          curl --fail http://127.0.0.1:8080/ | grep 'PRINT MONITOR'
+          curl --fail http://127.0.0.1:8085/health
+          curl --fail http://127.0.0.1:8085/api/status
+          curl --fail http://127.0.0.1:8085/alert -o "$RUNNER_TEMP/alert.wav"
+          python -c "from pathlib import Path; data=Path('$RUNNER_TEMP/alert.wav').read_bytes(); assert data[:4] == b'RIFF' and data[8:12] == b'WAVE' and len(data) > 44"
+          curl --fail http://127.0.0.1:8085/ | grep 'PRINT MONITOR'
           docker exec monitor-smoke ffmpeg -hide_banner -h muxer=mpjpeg 2>&1 | grep boundary_tag

@@ -21,10 +21,21 @@ function tick(){
  $('ack').disabled=!pending;
  if(pending&&enabled&&!muted&&data.alert&&Date.now()-lastPlayed>=data.repeat*1000&&audio.paused){lastPlayed=Date.now();audio.currentTime=0;audio.play().catch(()=>{$('notice').textContent='Sound blocked. Click Enable sounds to retry.';enabled=false;});}
 }
-async function poll(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error();const next=await r.json();if(event!==null&&next.event!==event){pending=true;lastPlayed=0;}event=next.event;data=next;received=Date.now();$('notice').textContent=!data.alert?'Alerts disabled in container settings':pending?'State changed • acknowledge to stop repeating':enabled?'Sounds ready • no unacknowledged changes':'Click Enable sounds to allow browser audio';$('sound').disabled=!data.alert;$('mute').disabled=!data.alert;$('camera-toggle').disabled=!data.camera;tick();}catch{if(data)data.connected=false;$('connection').textContent='● Dashboard connection lost';}finally{setTimeout(poll,2000);}}
+function settingsNotice(){
+ if(!data.alert&&!data.camera)return 'Alerts and Camera are disabled in container settings';
+ if(!data.alert)return 'Alerts are disabled in container settings';
+ if(!data.camera)return 'Camera is disabled in container settings';
+ return '';
+}
+function updateNotice(){
+ const settings=settingsNotice();
+ const status=data.alert?(pending?'State changed • acknowledge to stop repeating':enabled?'Sounds ready • no unacknowledged changes':'Click Enable sounds to allow browser audio'):'';
+ $('notice').textContent=settings||status;
+}
+async function poll(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error();const next=await r.json();if(event!==null&&next.event!==event){pending=true;lastPlayed=0;}event=next.event;data=next;received=Date.now();updateNotice();$('version').textContent=`v${data.version}`;$('sound').disabled=!data.alert;$('mute').disabled=!data.alert;$('camera-toggle').disabled=!data.camera;tick();}catch{if(data)data.connected=false;$('connection').textContent='● Dashboard connection lost';}finally{setTimeout(poll,2000);}}
 $('sound').onclick=async()=>{try{audio.muted=true;await audio.play();audio.pause();audio.currentTime=0;audio.muted=false;enabled=true;lastPlayed=0;$('sound').textContent='Sounds enabled';tick();}catch{audio.muted=false;$('notice').textContent='Unable to enable audio. Check the sound file.';}};
 $('mute').onclick=()=>{muted=!muted;audio.pause();$('mute').textContent=muted?'Unmute':'Mute';$('mute').setAttribute('aria-pressed',muted);};
-$('ack').onclick=()=>{pending=false;audio.pause();audio.currentTime=0;$('notice').textContent='Acknowledged';tick();};
+$('ack').onclick=()=>{pending=false;audio.pause();audio.currentTime=0;updateNotice();tick();};
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{$('notice').textContent='Full screen unavailable in this browser';}};
 $('camera-toggle').onclick=()=>{cameraOn=!cameraOn;$('camera-panel').hidden=!cameraOn;$('camera-toggle').textContent=cameraOn?'Camera on':'Camera off';if(cameraOn){$('camera-status').textContent='Connecting camera…';$('camera').src='/camera';}else $('camera').removeAttribute('src');};
 $('camera').onload=()=>{$('camera-status').textContent='Live camera';};$('camera').onerror=()=>{$('camera-status').textContent='Camera unavailable. Check CAMERA_URL, then toggle to retry.';};

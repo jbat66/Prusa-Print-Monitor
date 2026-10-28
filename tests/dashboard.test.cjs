@@ -34,3 +34,17 @@ test('disconnect freezes countdown and hides finish estimate',async()=>{
  assert.equal(d.element('remaining').textContent,'0:10:00');assert.equal(d.element('finish').textContent,'—');
  assert.match(d.element('connection').textContent,/Disconnected/);
 });
+test('disabled settings share the existing notice row',async()=>{
+ const d=dashboard();await settle();
+ for(const [alert,camera,message] of [
+  [false,false,'Alerts and Camera are disabled in container settings'],
+  [false,true,'Alerts are disabled in container settings'],
+  [true,false,'Camera is disabled in container settings']]){
+  d.context.next={...d.context.next,alert,camera,version:'0.2'};
+  await d.timers.shift()();
+  assert.equal(d.element('notice').textContent,message);
+  assert.equal(d.element('version').textContent,'v0.2');
+ }
+ d.context.next={...d.context.next,alert:true,camera:true};await d.timers.shift()();
+ assert.equal(d.element('notice').textContent,'Click Enable sounds to allow browser audio');
+});

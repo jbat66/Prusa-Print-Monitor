@@ -4,8 +4,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
     && useradd --uid 10001 --create-home monitor
 WORKDIR /app
 COPY app.py /app/app.py
+COPY VERSION /app/VERSION
 COPY static /app/static
 USER monitor
-EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"
+EXPOSE 8085
+HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8085/health', timeout=3)"
 CMD ["python", "-u", "app.py"]
