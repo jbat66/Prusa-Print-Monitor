@@ -117,6 +117,18 @@ def stop_camera(process):
         process.wait(timeout=1)
 
 
+def camera_command(url):
+    args = ['ffmpeg', '-nostdin', '-loglevel', 'error']
+    if urlparse(url).scheme == 'rtsp':
+        # RTSP is a demuxer and does not consume the HTTP rw_timeout option.
+        args += ['-rtsp_transport', 'tcp', '-timeout', '10000000']
+    else:
+        args += ['-rw_timeout', '10000000']
+    return args + ['-i', url, '-an', '-vf', 'fps=3,scale=960:-2',
+        '-c:v', 'mjpeg', '-threads', '1', '-q:v', '5',
+        '-f', 'mpjpeg', '-boundary_tag', 'frame', 'pipe:1']
+
+
 class MonitorServer(ThreadingHTTPServer):
     daemon_threads = True
 
@@ -224,12 +236,7 @@ class Handler(BaseHTTPRequestHandler):
             self.server.camera_state(viewer, 'connecting', 'Connecting camera…')
             LOG.info('Camera connection requested (%s); URL credentials are redacted', urlparse(self.server.monitor.camera_url).scheme)
             url = self.server.monitor.camera_url
-            args = ['ffmpeg', '-nostdin', '-loglevel', 'error', '-rw_timeout', '10000000']
-            if urlparse(url).scheme == 'rtsp':
-                args += ['-rtsp_transport', 'tcp', '-timeout', '10000000']
-            process = self.server.start_camera(args + ['-i', url, '-an', '-vf',
-                'fps=3,scale=960:-2', '-c:v', 'mjpeg', '-threads', '1', '-q:v', '5',
-                '-f', 'mpjpeg', '-boundary_tag', 'frame', 'pipe:1'])
+            process = self.server.start_camera(camera_command(url))
             threading.Thread(target=watchdog, daemon=True).start()
             self.send_response(200)
             self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
@@ -249,7 +256,11 @@ class Handler(BaseHTTPRequestHandler):
             failed = not self.server.monitor.stop.is_set()
             if failed:
                 self.server.camera_state(viewer, 'error', 'Camera stream ended. Check UNRAID container logs; disable and enable the camera to retry.')
-                LOG.warning('Camera stream ended; FFmpeg exit code=%s', process.poll())
+                try:
+                    exit_code = process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    exit_code = 'still running; stopping worker'
+                LOG.warning('Camera stream ended; FFmpeg exit code=%s', exit_code)
         except (BrokenPipeError, ConnectionResetError):
             LOG.info('Camera viewer disconnected')
         except OSError as error:

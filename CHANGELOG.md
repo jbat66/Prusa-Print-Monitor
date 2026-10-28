@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.4
+
+- Fix RTSP camera startup by using the RTSP timeout option without the incompatible rw_timeout option. Retain rw_timeout for HTTP/HTTPS cameras.
+- Wait for FFmpeg's exit status before logging a stream failure.
+- Check the actual container FFmpeg RTSP option parser during image smoke tests.
+
 ## 0.2.3
 
 - Log camera requests, FFmpeg errors, first video frames, stream endings and timeouts to the UNRAID container log with credentials redacted.

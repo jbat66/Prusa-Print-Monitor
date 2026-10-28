@@ -78,5 +78,8 @@ jobs:
           curl --fail http://127.0.0.1:8085/icon.png -o "$RUNNER_TEMP/icon.png"
           python -c "from pathlib import Path; assert Path('$RUNNER_TEMP/icon.png').read_bytes().startswith(bytes([137,80,78,71,13,10,26,10]))"
           docker exec monitor-smoke ffmpeg -hide_banner -h muxer=mpjpeg 2>&1 | grep boundary_tag
+          # A closed loopback port exercises the real RTSP input option parser.
+          # The expected failure is connection refused, not an unknown option.
+          docker exec monitor-smoke python -c "import subprocess; from app import camera_command; r=subprocess.run(camera_command('rtsp://127.0.0.1:1/live'),capture_output=True,timeout=5); error=r.stderr.decode(); print(error); assert 'Connection refused' in error; assert 'Option not found' not in error and 'Option rw_timeout not found' not in error"
           docker stop --time 5 monitor-smoke
           test "$(docker inspect --format '{{.State.ExitCode}}' monitor-smoke)" = "0"

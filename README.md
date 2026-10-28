@@ -1,4 +1,4 @@
-# Prusa Print Monitor — version 0.2.3
+# Prusa Print Monitor — version 0.2.4
 
 A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a desktop corner or a room display. Uses the same HTTP Digest authentication and status fields as `printer-state-display.sh`. No printer credentials are sent to the browser.
 
@@ -81,9 +81,9 @@ node --test tests/dashboard.test.cjs
 Tests cover state transitions, repeat/acknowledge/mute behavior, disconnections, invalid payloads, web routes, camera controls, credential isolation, and template variable order. CI builds Linux AMD64 and ARM64 images. To update an UNRAID installation after a new image is published, use **Check for Updates** on its Docker page.
 
 
-## Updating to version 0.2.3
+## Updating to version 0.2.4
 
-Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.3` and `:latest`. The source release is tagged `v0.2.3`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
+Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.4` and `:latest`. The source release is tagged `v0.2.4`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
 
 Existing UNRAID containers retain their old settings. Update the container configuration using the new template: change the container port to **8085** (and host port to 8085 unless you prefer another port), remove `ALERT_SOUND_FILE`, replace the old Sounds directory mount with **Sound File** pointing to an existing host file and container target `/sounds`, and set `ALERT_REPEAT_SECONDS=60`. The camera URL is now unmasked. Update the image and recreate/apply the container.
 
@@ -100,3 +100,6 @@ Version 0.2.2 handles Docker SIGTERM and stops camera workers cleanly. Update to
 Open the container's **Logs** screen in UNRAID, then click **Enable Camera** in the dashboard. Timestamped entries named `Prusa-Print-Monitor.log` report connection attempts, FFmpeg errors, first video frames, stream endings and timeouts. These entries go to container stdout, which Docker/UNRAID captures; no separate host log-file mapping is required. Printer connection/state changes and shutdown also appear there. Camera URL credentials and the printer API key are redacted.
 
 The dashboard checks the camera session status every two seconds and reports a failure if no complete frame arrives for 15 seconds. Check the log for authentication errors, connection refused, unsupported streams or timeouts. Confirm CAMERA_URL is a camera video stream reachable from UNRAID; for RTSP, use the camera's documented stream path. Click **Camera Enabled** to stop, then **Enable Camera** to retry.
+
+
+Version 0.2.4 fixes the RTSP startup error `Option rw_timeout not found`. RTSP cameras use the demuxer-specific `timeout` option; HTTP/HTTPS streams retain `rw_timeout`. No CAMERA_URL change is required for this fix.

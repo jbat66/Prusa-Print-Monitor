@@ -5,10 +5,20 @@ import threading
 import unittest
 import urllib.request
 from unittest.mock import patch
-from app import Monitor, MonitorServer
+from app import Monitor, MonitorServer, camera_command
 
 
 class CameraTests(unittest.TestCase):
+    def test_timeout_options_match_camera_protocol(self):
+        rtsp = camera_command('rtsp://camera.local/live')
+        self.assertNotIn('-rw_timeout', rtsp)
+        self.assertIn('-timeout', rtsp[:rtsp.index('-i')])
+        self.assertEqual(rtsp[rtsp.index('-rtsp_transport') + 1], 'tcp')
+        for scheme in ('http', 'https'):
+            args = camera_command(f'{scheme}://camera.local/live')
+            self.assertIn('-rw_timeout', args[:args.index('-i')])
+            self.assertNotIn('-rtsp_transport', args)
+
     def test_camera_failure_is_logged_and_reported_to_browser(self):
         with patch.dict(os.environ, {'ALERT': 'false', 'CAMERA': 'true',
                                     'CAMERA_URL': 'rtsp://user:secret@camera.local/live'}):

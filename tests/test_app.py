@@ -119,7 +119,7 @@ class Tests(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
         self.assertEqual(self.monitor.repeat, 60)
-        self.assertEqual(self.monitor.snapshot()['version'], '0.2.3')
+        self.assertEqual(self.monitor.snapshot()['version'], '0.2.4')
 
     def test_digest_challenge(self):
         import hashlib
