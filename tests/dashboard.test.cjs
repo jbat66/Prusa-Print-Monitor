@@ -186,3 +186,23 @@ test('unsuccessful audio unlock does not show sounds ready',async()=>{
  assert.equal(d.run('enabled'),false);assert.equal(d.element('mute').hidden,true);
  assert.match(d.element('notice').textContent,/Unable to enable/);
 });
+
+test('camera focus toggles without restarting the stream and keeps the selected layout',async()=>{
+ const d=dashboard();await settle();d.element('camera-toggle').onclick();
+ const source=d.element('camera').src;
+ d.element('camera').ondblclick();
+ assert.equal(d.context.document.body.dataset.cameraFocus,'true');
+ assert.equal(d.element('camera-back').hidden,false);
+ d.element('layout').value='large';d.element('layout').onchange();
+ assert.equal(d.context.document.body.dataset.layout,'large');
+ assert.equal(d.element('camera').src,source);
+ d.element('camera-back').onclick();assert.equal(d.context.document.body.dataset.cameraFocus,'false');
+ d.element('camera').ondblclick();d.element('camera-toggle').onclick();
+ assert.equal(d.context.document.body.dataset.cameraFocus,'false');
+});
+test('Enable sounds hides after success and returns after interruption',async()=>{
+ const d=dashboard();await settle();assert.equal(d.element('sound').hidden,false);
+ await d.element('sound').onclick();assert.equal(d.element('sound').hidden,true);
+ d.run("audioContext.state='interrupted';audioContext.listeners.statechange()");
+ assert.equal(d.element('sound').hidden,false);
+});

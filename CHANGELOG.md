@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.11
+
+- Double-click/double-tap the camera to show a camera-focused view at the selected layout's full width, keeping the normal header, sound notice and footer controls.
+- Return by double-clicking again, pressing Escape or using Back to status; the live camera stream is preserved.
+- Hide Enable sounds after successful enabling and show it again if audio is interrupted or blocked.
+
 ## 0.2.10
 
 - Add a live local-time clock to the header, updated every second.

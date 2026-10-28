@@ -42,6 +42,7 @@ function tick(){
  $('ack').hidden=!pending;
  $('ack-row').hidden=!pending;
  $('mute').hidden=!enabled||!data.alert;
+ $('sound').hidden=enabled;
  if(pending&&enabled&&!muted&&data.alert&&Date.now()-lastPlayed>=data.repeat*1000&&audio.paused){lastPlayed=Date.now();audio.currentTime=0;audio.play().catch(()=>{enabled=false;audio.pause();$('sound').textContent='Enable sounds';setNotice('Sound blocked. Click Enable sounds to retry.');});}
 }
 function settingsNotice(){
@@ -92,7 +93,18 @@ $('sound').onclick=async()=>{
 $('mute').onclick=()=>{muted=!muted;audio.pause();$('mute').textContent=muted?'Unmute':'Mute';$('mute').setAttribute('aria-pressed',muted);updateNotice();tick();};
 $('ack').onclick=()=>{pending=false;audio.pause();audio.currentTime=0;updateNotice();tick();};
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{setNotice('Full screen unavailable in this browser');}};
-$('camera-toggle').onclick=()=>{cameraOn=!cameraOn;$('camera-panel').hidden=!cameraOn;$('camera-toggle').textContent=cameraOn?'Camera Enabled':'Enable Camera';if(cameraOn){$('camera-status').textContent='Connecting camera…';cameraViewer++;$('camera').src=`/camera?viewer=${cameraViewer}`;}else $('camera').removeAttribute('src');};
+$('camera-toggle').onclick=()=>{cameraOn=!cameraOn;$('camera-panel').hidden=!cameraOn;$('camera-toggle').textContent=cameraOn?'Camera Enabled':'Enable Camera';if(cameraOn){$('camera-status').textContent='Connecting camera…';cameraViewer++;$('camera').src=`/camera?viewer=${cameraViewer}`;}else{setCameraFocus(false);$('camera').removeAttribute('src');}};
+function setCameraFocus(focused){
+ focused=focused&&cameraOn;
+ document.body.dataset.cameraFocus=String(focused);
+ $('camera-back').hidden=!focused;
+ $('camera').setAttribute('aria-expanded',String(focused));
+ $('camera').setAttribute('aria-label',focused?'Return to printer status view':'Expand camera view');
+}
+$('camera').ondblclick=()=>setCameraFocus(document.body.dataset.cameraFocus!=='true');
+$('camera').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();$('camera').ondblclick();}};
+$('camera-back').onclick=()=>setCameraFocus(false);
+document.addEventListener?.('keydown',event=>{if(event.key==='Escape')setCameraFocus(false);});
 async function cameraStatus(){
  const viewer=cameraViewer;
  try{

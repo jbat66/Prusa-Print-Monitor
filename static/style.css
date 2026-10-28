@@ -32,3 +32,14 @@
 .ack-row{grid-area:acknowledge;margin-top:16px}.ack-row:not([hidden])+footer{margin-top:10px}
 
 header{flex-wrap:wrap}#clock{font-size:1.1rem;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}body[data-layout=large] #clock{font-size:clamp(1.1rem,2vw,2rem)}
+
+#camera{cursor:zoom-in;touch-action:manipulation}
+#camera:focus-visible{outline:3px solid #ff8b44;outline-offset:3px}
+body[data-camera-focus=true][data-layout] main:has(#camera-panel:not([hidden])){display:flex;flex-direction:column;align-items:stretch;gap:0}
+body[data-camera-focus=true] .hero,body[data-camera-focus=true] .metrics{display:none}
+body[data-camera-focus=true] header{order:0}
+body[data-camera-focus=true][data-layout] #camera-panel{order:1;margin:24px 0 0}
+body[data-camera-focus=true][data-layout] #camera{display:block;width:100%;height:auto;max-height:none;aspect-ratio:auto;cursor:zoom-out}
+body[data-camera-focus=true] #notice{order:2}
+body[data-camera-focus=true] .ack-row{order:3}
+body[data-camera-focus=true] footer{order:4}
