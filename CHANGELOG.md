@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3
+
+- Log camera requests, FFmpeg errors, first video frames, stream endings and timeouts to the UNRAID container log with credentials redacted.
+- Report camera status to the dashboard and stop streams that produce no complete frames for 15 seconds.
+- Use explicit RTSP timeouts and single-threaded MJPEG encoding.
+- Rename camera controls to Enable Camera / Camera Enabled.
+- Add the application icon beside the dashboard name.
+
 ## 0.2.2
 
 - Handle SIGTERM and SIGINT explicitly so Docker/UNRAID can stop the Python container cleanly.

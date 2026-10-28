@@ -8,7 +8,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from unittest.mock import patch
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from app import Monitor, Handler, normalize
+from app import Monitor, Handler, normalize, safe_diagnostic
 
 
 class Response:
@@ -62,7 +62,7 @@ class Tests(unittest.TestCase):
                 body = json.load(r)
             self.assertNotIn('API_KEY', body)
             self.assertNotIn('camera_url', body)
-            for path in ['/', '/app.js', '/style.css', '/health']:
+            for path in ['/', '/app.js', '/style.css', '/health', '/icon.png']:
                 with urllib.request.urlopen(base + path) as r:
                     self.assertEqual(r.status, 200)
             for path in ['/camera', '/alert', '/../app.py']:
@@ -71,6 +71,13 @@ class Tests(unittest.TestCase):
         finally:
             server.shutdown()
             server.server_close()
+
+    def test_camera_log_redacts_credentials(self):
+        url = 'rtsp://maker:secret-password@camera.local/live?token=private-token'
+        result = safe_diagnostic(f'Cannot open {url}; secret-password authentication failed', url)
+        self.assertNotIn('secret-password', result)
+        self.assertNotIn('private-token', result)
+        self.assertNotIn('maker', result)
 
     def test_template_order_and_visibility(self):
         configs = ET.parse('unraid/prusa-print-monitor.xml').getroot().findall('Config')
@@ -112,7 +119,7 @@ class Tests(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
         self.assertEqual(self.monitor.repeat, 60)
-        self.assertEqual(self.monitor.snapshot()['version'], '0.2.2')
+        self.assertEqual(self.monitor.snapshot()['version'], '0.2.3')
 
     def test_digest_challenge(self):
         import hashlib

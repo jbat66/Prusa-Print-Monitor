@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-let data, received=0, event=null, pending=false, enabled=false, muted=false, lastPlayed=0, cameraOn=false;
+let data, received=0, event=null, pending=false, enabled=false, muted=false, lastPlayed=0, cameraOn=false, cameraViewer=Date.now();
 const audio = new Audio('/alert');
 audio.preload = 'none';
 audio.addEventListener('error',()=>{if(data?.alert)$('notice').textContent='Cannot play alert file. Check its format and mount.';});
@@ -32,12 +32,21 @@ function updateNotice(){
  const status=data.alert?(pending?'State changed • acknowledge to stop repeating':enabled?'Sounds ready • no unacknowledged changes':'Click Enable sounds to allow browser audio'):'';
  $('notice').textContent=settings||status;
 }
-async function poll(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error();const next=await r.json();if(event!==null&&next.event!==event){pending=true;lastPlayed=0;}event=next.event;data=next;received=Date.now();updateNotice();$('version').textContent=`v${data.version}`;$('sound').disabled=!data.alert;$('mute').disabled=!data.alert;$('camera-toggle').disabled=!data.camera;tick();}catch{if(data)data.connected=false;$('connection').textContent='● Dashboard connection lost';}finally{setTimeout(poll,2000);}}
+async function poll(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error();const next=await r.json();if(event!==null&&next.event!==event){pending=true;lastPlayed=0;}event=next.event;data=next;received=Date.now();updateNotice();$('version').textContent=`v${data.version}`;$('sound').disabled=!data.alert;$('mute').disabled=!data.alert;$('camera-toggle').disabled=!data.camera;tick();if(cameraOn)await cameraStatus();}catch{if(data)data.connected=false;$('connection').textContent='● Dashboard connection lost';}finally{setTimeout(poll,2000);}}
 $('sound').onclick=async()=>{try{audio.muted=true;await audio.play();audio.pause();audio.currentTime=0;audio.muted=false;enabled=true;lastPlayed=0;$('sound').textContent='Sounds enabled';tick();}catch{audio.muted=false;$('notice').textContent='Unable to enable audio. Check the sound file.';}};
 $('mute').onclick=()=>{muted=!muted;audio.pause();$('mute').textContent=muted?'Unmute':'Mute';$('mute').setAttribute('aria-pressed',muted);};
 $('ack').onclick=()=>{pending=false;audio.pause();audio.currentTime=0;updateNotice();tick();};
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{$('notice').textContent='Full screen unavailable in this browser';}};
-$('camera-toggle').onclick=()=>{cameraOn=!cameraOn;$('camera-panel').hidden=!cameraOn;$('camera-toggle').textContent=cameraOn?'Camera on':'Camera off';if(cameraOn){$('camera-status').textContent='Connecting camera…';$('camera').src='/camera';}else $('camera').removeAttribute('src');};
+$('camera-toggle').onclick=()=>{cameraOn=!cameraOn;$('camera-panel').hidden=!cameraOn;$('camera-toggle').textContent=cameraOn?'Camera Enabled':'Enable Camera';if(cameraOn){$('camera-status').textContent='Connecting camera…';cameraViewer++;$('camera').src=`/camera?viewer=${cameraViewer}`;}else $('camera').removeAttribute('src');};
+async function cameraStatus(){
+ const viewer=cameraViewer;
+ try{
+  const response=await fetch(`/api/camera/status?viewer=${viewer}`,{cache:'no-store'});
+  if(!response.ok)throw Error();
+  const status=await response.json();
+  if(cameraOn&&viewer===cameraViewer)$('camera-status').textContent=status.message;
+ }catch{if(cameraOn&&viewer===cameraViewer)$('camera-status').textContent='Cannot read camera status. Check UNRAID container logs.';}
+}
 $('camera').onload=()=>{$('camera-status').textContent='Live camera';};$('camera').onerror=()=>{$('camera-status').textContent='Camera unavailable. Check CAMERA_URL, then toggle to retry.';};
 try{$('layout').value=localStorage.getItem('layout')||'desktop';}catch{}
 function layout(){document.body.dataset.layout=$('layout').value;try{localStorage.setItem('layout',$('layout').value);}catch{}}

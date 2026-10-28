@@ -6,6 +6,7 @@ WORKDIR /app
 COPY app.py /app/app.py
 COPY VERSION /app/VERSION
 COPY static /app/static
+COPY assets/icon.png /app/assets/icon.png
 USER monitor
 EXPOSE 8085
 STOPSIGNAL SIGTERM

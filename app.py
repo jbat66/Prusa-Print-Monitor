@@ -1,20 +1,36 @@
 """Small LAN-only PrusaLink monitor. Credentials never leave this process."""
 import json
+import logging
 import math
 import os
 import signal
+import re
+import sys
 from pathlib import Path
 import subprocess
 import threading
 import time
 import urllib.request
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs, unquote
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = Path(__file__).parent
 VERSION = (ROOT / 'VERSION').read_text().strip()
 PORT = 8085
 SOUND_PATH = Path('/sounds')
+LOG = logging.getLogger('Prusa-Print-Monitor.log')
+
+
+def safe_diagnostic(message, camera_url=''):
+    text = str(message)
+    if camera_url:
+        text = text.replace(camera_url, '[camera URL]')
+    text = re.sub(r'(?:rtsp|https?)://[^\s\]\'\"]+', '[URL redacted]', text)
+    parsed = urlparse(camera_url)
+    for secret in (parsed.username, parsed.password, os.getenv('API_KEY')):
+        if secret:
+            text = text.replace(secret, '[redacted]').replace(unquote(secret), '[redacted]')
+    return text[:1500]
 
 
 def seconds(value):
@@ -64,14 +80,22 @@ class Monitor:
             with self.opener.open(self.url, timeout=self.timeout) as response:
                 result = normalize(json.load(response))
             with self.lock:
+                previous = self.data.copy()
                 event = self.data['event'] + int(self.data['updated'] is not None and
                                                 result['state'] != self.data['state'])
                 self.data.update(result, connected=True, updated=time.time(),
                                  attempted=time.time(), event=event)
-        except Exception:
+            if not previous['connected']:
+                LOG.info('Printer connected; state=%s', result['state'])
+            elif previous['state'] != result['state']:
+                LOG.info('Printer state changed: %s -> %s', previous['state'], result['state'])
+        except Exception as error:
             # Never expose upstream URLs, credentials or response bodies.
             with self.lock:
+                report = self.data['connected'] or self.data['attempted'] is None
                 self.data.update(connected=False, attempted=time.time())
+            if report:
+                LOG.warning('Printer request failed (%s); check printer address, credentials and network', type(error).__name__)
 
     def run(self):
         while not self.stop.is_set():
@@ -103,13 +127,29 @@ class MonitorServer(ThreadingHTTPServer):
         self.camera_slots = threading.BoundedSemaphore(4)
         self.camera_lock = threading.Lock()
         self.cameras = set()
+        self.camera_states = {}
+
+    def camera_state(self, viewer, state=None, message=None):
+        with self.camera_lock:
+            if state:
+                self.camera_states[viewer] = dict(state=state, message=message)
+                if len(self.camera_states) > 128:
+                    del self.camera_states[next(iter(self.camera_states))]
+            return self.camera_states.get(viewer, dict(state='connecting', message='Connecting camera…')).copy()
+
+    def log_camera_errors(self, process):
+        for line in process.stderr:
+            detail = safe_diagnostic(line.decode('utf-8', errors='replace').strip(), self.monitor.camera_url)
+            if detail:
+                LOG.warning('Camera FFmpeg: %s', detail)
 
     def start_camera(self, args):
         with self.camera_lock:
             if self.monitor.stop.is_set():
                 raise OSError('Server is stopping')
-            process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.cameras.add(process)
+            threading.Thread(target=self.log_camera_errors, args=(process,), daemon=True).start()
             return process
 
     def close_cameras(self):
@@ -137,7 +177,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        path = self.path.split('?')[0]
+        target = urlparse(self.path)
+        path = target.path
+        viewer = parse_qs(target.query).get('viewer', ['default'])[0][:64]
         if path == '/api/status':
             self.send(json.dumps(self.server.monitor.snapshot()).encode(), 'application/json')
         elif path == '/health':
@@ -148,7 +190,11 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 self.send(b'Unable to read the MP3 file mounted at /sounds', 'text/plain', 503)
         elif path == '/camera' and self.server.monitor.camera:
-            self.stream_camera()
+            self.stream_camera(viewer)
+        elif path == '/api/camera/status' and self.server.monitor.camera:
+            self.send(json.dumps(self.server.camera_state(viewer)).encode(), 'application/json')
+        elif path == '/icon.png':
+            self.send((ROOT / 'assets' / 'icon.png').read_bytes(), 'image/png')
         elif path in ('/', '/app.js', '/style.css'):
             file = ROOT / 'static' / ('index.html' if path == '/' else path[1:])
             self.send(file.read_bytes(), {'/': 'text/html; charset=utf-8',
@@ -156,37 +202,76 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send(b'Not found', 'text/plain', 404)
 
-    def stream_camera(self):
+    def stream_camera(self, viewer='default'):
         if not self.server.camera_slots.acquire(blocking=False):
+            self.server.camera_state(viewer, 'error', 'Camera viewer limit reached. Close another camera view and retry.')
+            LOG.warning('Camera viewer limit reached')
             self.send(b'Camera viewer limit reached', 'text/plain', 503)
             return
         process = None
+        finished = threading.Event()
+        last_data = [time.monotonic()]
+        live = False
+        failed = False
+        def watchdog():
+            while not finished.wait(1):
+                if time.monotonic() - last_data[0] > 15:
+                    self.server.camera_state(viewer, 'error', 'Camera timed out. Check UNRAID container logs and CAMERA_URL.')
+                    LOG.error('Camera timed out: no complete video frame for 15 seconds')
+                    stop_camera(process)
+                    return
         try:
+            self.server.camera_state(viewer, 'connecting', 'Connecting camera…')
+            LOG.info('Camera connection requested (%s); URL credentials are redacted', urlparse(self.server.monitor.camera_url).scheme)
             url = self.server.monitor.camera_url
             args = ['ffmpeg', '-nostdin', '-loglevel', 'error', '-rw_timeout', '10000000']
             if urlparse(url).scheme == 'rtsp':
-                args += ['-rtsp_transport', 'tcp']
+                args += ['-rtsp_transport', 'tcp', '-timeout', '10000000']
             process = self.server.start_camera(args + ['-i', url, '-an', '-vf',
-                'fps=3,scale=960:-2', '-f', 'mpjpeg', '-boundary_tag', 'frame', 'pipe:1'])
+                'fps=3,scale=960:-2', '-c:v', 'mjpeg', '-threads', '1', '-q:v', '5',
+                '-f', 'mpjpeg', '-boundary_tag', 'frame', 'pipe:1'])
+            threading.Thread(target=watchdog, daemon=True).start()
             self.send_response(200)
             self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
             self.send_header('Cache-Control', 'no-store')
             self.end_headers()
+            tail = b''
             while chunk := process.stdout.read1(65536):
+                if b'\xff\xd9' in tail + chunk:
+                    last_data[0] = time.monotonic()
+                    if not live:
+                        live = True
+                        self.server.camera_state(viewer, 'live', 'Live camera')
+                        LOG.info('Camera video frames received; streaming to browser')
+                tail = chunk[-1:]
                 self.wfile.write(chunk)
                 self.wfile.flush()
-        except (OSError, BrokenPipeError):
-            pass
+            failed = not self.server.monitor.stop.is_set()
+            if failed:
+                self.server.camera_state(viewer, 'error', 'Camera stream ended. Check UNRAID container logs; disable and enable the camera to retry.')
+                LOG.warning('Camera stream ended; FFmpeg exit code=%s', process.poll())
+        except (BrokenPipeError, ConnectionResetError):
+            LOG.info('Camera viewer disconnected')
+        except OSError as error:
+            failed = True
+            self.server.camera_state(viewer, 'error', 'Camera unavailable. Check UNRAID container logs.')
+            LOG.error('Camera failed: %s', safe_diagnostic(error, self.server.monitor.camera_url))
         finally:
+            finished.set()
             if process:
                 stop_camera(process)
                 process.stdout.close()
                 with self.server.camera_lock:
                     self.server.cameras.discard(process)
+            if not failed and self.server.camera_state(viewer)['state'] != 'error':
+                self.server.camera_state(viewer, 'stopped', 'Camera stopped')
+            LOG.info('Camera session closed')
             self.server.camera_slots.release()
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout,
+                        format='%(asctime)s %(levelname)s %(name)s: %(message)s')
     monitor = Monitor()
     server = MonitorServer(('0.0.0.0', PORT), monitor)
     # Keep signal handlers small. handle_request has a bounded timeout, so
@@ -196,7 +281,7 @@ def main():
     signal.signal(signal.SIGTERM, request_stop)
     signal.signal(signal.SIGINT, request_stop)
     threading.Thread(target=monitor.run, daemon=True).start()
-    print(f'Prusa Print Monitor {VERSION} listening on port {PORT}', flush=True)
+    LOG.info('Prusa Print Monitor %s listening on port %s; alerts=%s camera=%s', VERSION, PORT, monitor.alert, monitor.camera)
     try:
         while not monitor.stop.is_set():
             server.handle_request()
@@ -204,7 +289,7 @@ def main():
         monitor.stop.set()
         server.close_cameras()
         server.server_close()
-        print('Prusa Print Monitor stopped cleanly', flush=True)
+        LOG.info('Prusa Print Monitor stopped cleanly')
 
 
 if __name__ == '__main__':
