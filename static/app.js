@@ -1,7 +1,8 @@
 const $ = id => document.getElementById(id);
 let data, received=0, event=null, pending=false, enabled=false, muted=false, lastPlayed=0, cameraOn=false;
 const audio = new Audio('/alert');
-audio.addEventListener('error',()=>{$('notice').textContent='Cannot play alert file. Check its format and mount.';});
+audio.preload = 'none';
+audio.addEventListener('error',()=>{if(data?.alert)$('notice').textContent='Cannot play alert file. Check its format and mount.';});
 const colors={PRINTING:'#57d69a',PAUSED:'#ffbf69',FINISHED:'#70baff',IDLE:'#9baebf',READY:'#9baebf',ERROR:'#ff6b78',ATTENTION:'#ffbf69',STOPPED:'#ff6b78'};
 function duration(n){if(n===null)return '—';n=Math.max(0,Math.ceil(n));return `${Math.floor(n/3600)}:${String(Math.floor(n/60)%60).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;}
 function tick(){
