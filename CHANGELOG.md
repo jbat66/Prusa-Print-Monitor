@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.10
+
+- Add a live local-time clock to the header, updated every second.
+- Silently unlock Web Audio on tap instead of playing the actual alarm as a test.
+- Use fresh alarm sources for repeat playback, and request another tap when browser audio is interrupted.
+
 ## 0.2.9
 
 - Bundle four MP3 alerts and copy missing files into the writable /sounds folder at container startup, preserving existing files.

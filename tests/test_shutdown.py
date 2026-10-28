@@ -26,7 +26,7 @@ class ShutdownTests(unittest.TestCase):
                 self.fail(f'Server exited early: {process.communicate()}')
             try:
                 with urllib.request.urlopen('http://127.0.0.1:8085/api/status', timeout=.2) as response:
-                    self.assertEqual(json.load(response)['version'], '0.2.9')
+                    self.assertEqual(json.load(response)['version'], '0.2.10')
                     return process
             except OSError:
                 time.sleep(.05)

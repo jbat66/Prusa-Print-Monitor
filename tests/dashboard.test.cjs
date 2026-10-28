@@ -17,12 +17,20 @@ function dashboard(options={}){
  navigator:options.navigator||{userAgent:"Desktop browser"},
  localStorage:{getItem(){return options.savedLayout;},setItem(){}},Audio:class{paused=true;play(){plays++;this.paused=false;return Promise.resolve();}pause(){this.paused=true;}addEventListener(){}},
 
- Date,Math,String,console,setInterval(){},setTimeout(fn){timers.push(fn);},fetch:async(url)=>({ok:true,json:async()=>url.startsWith('/api/camera/status')?context.cameraResponse:context.next})};
+ Date,Math,String,console,setInterval(){},setTimeout(fn){timers.push(fn);},fetch:async(url)=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(8),json:async()=>url.startsWith('/api/camera/status')?context.cameraResponse:context.next})};
 
  context.cameraResponse={state:'connecting',message:'Connecting camera…'};
 
  context.next={state:'PRINTING',remaining:600,filament:300,connected:true,updated:Date.now()/1000,server_time:Date.now()/1000,event:0,alert:true,camera:true,refresh:60,repeat:30};
 
+ context.AudioContext=class{
+  state='suspended';sampleRate=44100;destination={};listeners={};
+  resume(){this.state=options.resumeFails?'suspended':'running';return Promise.resolve();}
+  addEventListener(name,fn){this.listeners[name]=fn;}
+  createBuffer(){return {silent:true};}
+  decodeAudioData(){return Promise.resolve({alarm:true});}
+  createBufferSource(){return {buffer:null,connect(){},disconnect(){},stop(){},start(){if(!this.buffer.silent)plays++;}};}
+ };
  vm.createContext(context);vm.runInContext(fs.readFileSync('static/app.js','utf8'),context);
 
  return {context,element,timers,plays:()=>plays,run:code=>vm.runInContext(code,context)};
@@ -155,4 +163,26 @@ test('Mute appears after sounds are enabled and updates the notice immediately',
  d.element('mute').onclick();
  assert.equal(d.element('notice').textContent,'Sounds ready \u2022 no unacknowledged changes');
  assert.equal(d.element('notice').style.color,'#57d69a');
+});
+
+test('enabling sounds is silent and completed alarms can play repeatedly',async()=>{
+ const d=dashboard();await settle();
+ assert.ok(d.element('clock').textContent.length>0);
+ await d.element('sound').onclick();assert.equal(d.plays(),0);
+ d.context.next={...d.context.next,state:'PAUSED',event:1};await d.timers.shift()();
+ assert.equal(d.plays(),1);
+ d.run('alertSource.onended();lastPlayed=Date.now()-31000;tick()');assert.equal(d.plays(),2);
+ d.element('ack').onclick();d.run('lastPlayed=0;tick()');assert.equal(d.plays(),2);
+});
+test('interrupted iPhone audio requires another tap and re-enables silently',async()=>{
+ const d=dashboard();await settle();await d.element('sound').onclick();
+ d.run("audioContext.state='interrupted';audioContext.listeners.statechange()");
+ assert.equal(d.run('enabled'),false);assert.equal(d.element('mute').hidden,true);
+ assert.match(d.element('notice').textContent,/Audio paused/);
+ await d.element('sound').onclick();assert.equal(d.run('enabled'),true);assert.equal(d.plays(),0);
+});
+test('unsuccessful audio unlock does not show sounds ready',async()=>{
+ const d=dashboard({resumeFails:true});await settle();await d.element('sound').onclick();
+ assert.equal(d.run('enabled'),false);assert.equal(d.element('mute').hidden,true);
+ assert.match(d.element('notice').textContent,/Unable to enable/);
 });

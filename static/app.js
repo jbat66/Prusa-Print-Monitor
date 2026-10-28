@@ -1,11 +1,31 @@
 const $ = id => document.getElementById(id);
 let data, received=0, event=null, pending=false, enabled=false, muted=false, lastPlayed=0, cameraOn=false, cameraViewer=Date.now();
-const audio = new Audio('/alert');
-audio.preload = 'none';
-audio.addEventListener('error',()=>{if(data?.alert)setNotice('Cannot play alert file. Check its format and mount.');});
+let audioContext, alertBuffer, alertSource;
+const audio={paused:true,currentTime:0,
+ pause(){
+  const source=alertSource;alertSource=null;this.paused=true;
+  if(source){source.onended=null;try{source.stop();}catch{}source.disconnect();}
+ },
+ async play(){
+  if(!audioContext||audioContext.state!=='running'||!alertBuffer)throw Error('Audio not ready');
+  this.pause();
+  const source=audioContext.createBufferSource();source.buffer=alertBuffer;
+  source.connect(audioContext.destination);alertSource=source;this.paused=false;
+  source.onended=()=>{source.disconnect();if(alertSource===source){alertSource=null;this.paused=true;}};
+  try{source.start();}catch(error){this.pause();throw error;}
+ }
+};
+function audioInterrupted(){
+ if(enabled&&audioContext.state!=='running'){
+  enabled=false;audio.pause();$('sound').textContent='Enable sounds';
+  setNotice('Audio paused by browser. Tap Enable sounds to resume alerts.');tick();
+ }
+}
 const colors={PRINTING:'#57d69a',PAUSED:'#ffbf69',FINISHED:'#70baff',IDLE:'#9baebf',READY:'#9baebf',ERROR:'#ff6b78',ATTENTION:'#ffbf69',STOPPED:'#ff6b78'};
 function duration(n){if(n===null)return '—';n=Math.max(0,Math.ceil(n));return `${Math.floor(n/3600)}:${String(Math.floor(n/60)%60).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;}
 function tick(){
+ const now=new Date();$('clock').textContent=now.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
+ $('clock').setAttribute('datetime',now.toISOString());
  if(!data)return;
  const age=(Date.now()-received)/1000, stale=age>Math.max(10,data.refresh*2), connected=data.connected&&!stale;
  $('connection').textContent=connected?'● Connected':'● Disconnected • data may be stale';
@@ -22,7 +42,7 @@ function tick(){
  $('ack').hidden=!pending;
  $('ack-row').hidden=!pending;
  $('mute').hidden=!enabled||!data.alert;
- if(pending&&enabled&&!muted&&data.alert&&Date.now()-lastPlayed>=data.repeat*1000&&audio.paused){lastPlayed=Date.now();audio.currentTime=0;audio.play().catch(()=>{setNotice('Sound blocked. Click Enable sounds to retry.');enabled=false;});}
+ if(pending&&enabled&&!muted&&data.alert&&Date.now()-lastPlayed>=data.repeat*1000&&audio.paused){lastPlayed=Date.now();audio.currentTime=0;audio.play().catch(()=>{enabled=false;audio.pause();$('sound').textContent='Enable sounds';setNotice('Sound blocked. Click Enable sounds to retry.');});}
 }
 function settingsNotice(){
  if(!data.alert&&!data.camera)return 'Alerts and Camera are disabled in container settings';
@@ -41,7 +61,34 @@ function setNotice(message,ready=false){
  $('notice').style.color=ready?'#57d69a':'#ffb258';
 }
 async function poll(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error();const next=await r.json();if(event!==null&&next.event!==event){pending=true;lastPlayed=0;}event=next.event;data=next;received=Date.now();updateNotice();$('version').textContent=`v${data.version}`;$('sound').disabled=!data.alert;$('mute').disabled=!data.alert;$('camera-toggle').disabled=!data.camera;tick();if(cameraOn)await cameraStatus();}catch{if(data)data.connected=false;$('connection').textContent='● Dashboard connection lost';}finally{setTimeout(poll,2000);}}
-$('sound').onclick=async()=>{try{audio.muted=true;await audio.play();audio.pause();audio.currentTime=0;audio.muted=false;enabled=true;lastPlayed=0;$('sound').textContent='Sounds enabled';updateNotice();tick();}catch{audio.muted=false;setNotice('Unable to enable audio. Check the sound file.');}};
+$('sound').onclick=async()=>{
+ $('sound').disabled=true;
+ try{
+  if(!audioContext||audioContext.state==='closed'){
+   const Context=globalThis.AudioContext||globalThis.webkitAudioContext;
+   if(!Context)throw Error('Web Audio unavailable');
+   audioContext=new Context();
+   audioContext.addEventListener('statechange',audioInterrupted);
+  }
+  // Unlock with true silence during the tap, never by playing the alarm.
+  const resumed=audioContext.resume();
+  const silence=audioContext.createBufferSource();
+  silence.buffer=audioContext.createBuffer(1,1,audioContext.sampleRate);
+  silence.connect(audioContext.destination);silence.onended=()=>silence.disconnect();silence.start();
+  await resumed;
+  if(audioContext.state!=='running')throw Error('Audio remains suspended');
+  if(!alertBuffer){
+   const response=await fetch('/alert',{cache:'no-store'});
+   if(!response.ok)throw Error('Cannot load alert');
+   alertBuffer=await audioContext.decodeAudioData(await response.arrayBuffer());
+  }
+  if(audioContext.state!=='running')throw Error('Audio was interrupted while loading');
+  enabled=true;lastPlayed=0;$('sound').textContent='Sounds enabled';updateNotice();tick();
+ }catch{
+  enabled=false;audio.pause();$('sound').textContent='Enable sounds';
+  setNotice('Unable to enable audio. Tap Enable sounds again; check the sound file if this persists.');tick();
+ }finally{$('sound').disabled=!data?.alert;}
+};
 $('mute').onclick=()=>{muted=!muted;audio.pause();$('mute').textContent=muted?'Unmute':'Mute';$('mute').setAttribute('aria-pressed',muted);updateNotice();tick();};
 $('ack').onclick=()=>{pending=false;audio.pause();audio.currentTime=0;updateNotice();tick();};
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{setNotice('Full screen unavailable in this browser');}};

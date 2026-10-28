@@ -1,6 +1,6 @@
 <p align="center"><img src="assets/icon.png" alt="Prusa Print Monitor" width="320"></p>
 
-# Prusa Print Monitor — version 0.2.9
+# Prusa Print Monitor — version 0.2.10
 
 A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a desktop corner or a room display. Uses the same HTTP Digest authentication and status fields as `printer-state-display.sh`. No printer credentials are sent to the browser.
 
@@ -107,9 +107,9 @@ node --test tests/dashboard.test.cjs
 Tests cover state transitions, repeat/acknowledge/mute behavior, disconnections, invalid payloads, web routes, camera controls, credential isolation, and template variable order. CI builds Linux AMD64 and ARM64 images. To update an UNRAID installation after a new image is published, use **Check for Updates** on its Docker page.
 
 
-## Updating to version 0.2.9
+## Updating to version 0.2.10
 
-Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.9` and `:latest`. The source release is tagged `v0.2.9`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
+Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.10` and `:latest`. The source release is tagged `v0.2.10`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
 
 Existing UNRAID containers retain their old settings. Update the container configuration using the new template: change the container port to **8085** (and host port to 8085 unless you prefer another port), remove `ALERT_SOUND_FILE`, replace the old single-file mount with a writable **Sounds Folder** directory at `/sounds`, and set **Sound File** to `/mnt/user/appdata/prusa-print-monitor/sounds/AlarmSoundEffect.mp3`, and set `ALERT_REPEAT_SECONDS=60`. The camera URL is now unmasked. Update the image and recreate/apply the container.
 
@@ -141,3 +141,6 @@ Version 0.2.7 places Acknowledge in its own conditional row above Layout. Mute a
 
 
 Version 0.2.8 colors the ready-sounds notice green and keeps muted/disabled notices orange. The simplified `assets/app-icon.png` is used in the web header and UNRAID template; the original large `assets/icon.png` is retained as the README illustration. Existing UNRAID installations should update the Icon URL to `https://raw.githubusercontent.com/jbat66/Prusa-Print-Monitor/main/assets/app-icon.png`.
+
+
+Version 0.2.10 adds a live clock using the viewing device’s local time. Enable sounds silently unlocks Web Audio instead of playing the alarm as a test. Each actual state-change alert uses a fresh playback source, allowing repeat playback until acknowledged. If iOS suspends audio, the dashboard asks you to tap Enable sounds again. Keep the page foreground and the phone awake for dependable alerts; browser/phone background suspension still applies. Audio is decoded once per page session, so refresh after changing the selected sound.
