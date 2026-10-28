@@ -1,4 +1,4 @@
-# Prusa Print Monitor — version 0.2.1
+# Prusa Print Monitor — version 0.2.2
 
 A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a desktop corner or a room display. Uses the same HTTP Digest authentication and status fields as `printer-state-display.sh`. No printer credentials are sent to the browser.
 
@@ -81,10 +81,15 @@ node --test tests/dashboard.test.cjs
 Tests cover state transitions, repeat/acknowledge/mute behavior, disconnections, invalid payloads, web routes, camera controls, credential isolation, and template variable order. CI builds Linux AMD64 and ARM64 images. To update an UNRAID installation after a new image is published, use **Check for Updates** on its Docker page.
 
 
-## Updating to version 0.2.1
+## Updating to version 0.2.2
 
-Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.1` and `:latest`. The source release is tagged `v0.2.1`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
+Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.2` and `:latest`. The source release is tagged `v0.2.2`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
 
 Existing UNRAID containers retain their old settings. Update the container configuration using the new template: change the container port to **8085** (and host port to 8085 unless you prefer another port), remove `ALERT_SOUND_FILE`, replace the old Sounds directory mount with **Sound File** pointing to an existing host file and container target `/sounds`, and set `ALERT_REPEAT_SECONDS=60`. The camera URL is now unmasked. Update the image and recreate/apply the container.
 
 The existing notice row reports whether alerts, camera, or both are disabled, without adding another row. When both features are enabled, audio readiness or pending alerts use that same notice.
+
+
+### Container stop troubleshooting
+
+Version 0.2.2 handles Docker SIGTERM and stops camera workers cleanly. Update to `:0.2.2` or the current `:latest`. If an older container refuses to stop, use the UNRAID terminal to run `docker stop --time 5 Prusa-Print-Monitor` (substitute the exact container name). Docker will force-stop it after the timeout if necessary. If it still runs, try `docker kill Prusa-Print-Monitor` once and save any error text; a failure to force-stop needs Docker/host diagnostics. Then apply the updated image.

@@ -76,3 +76,5 @@ jobs:
           grep -i "Content-Type: audio/mpeg" "$RUNNER_TEMP/alert-headers"
           curl --fail http://127.0.0.1:8085/ | grep 'PRINT MONITOR'
           docker exec monitor-smoke ffmpeg -hide_banner -h muxer=mpjpeg 2>&1 | grep boundary_tag
+          docker stop --time 5 monitor-smoke
+          test "$(docker inspect --format '{{.State.ExitCode}}' monitor-smoke)" = "0"

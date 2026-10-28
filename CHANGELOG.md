@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Handle SIGTERM and SIGINT explicitly so Docker/UNRAID can stop the Python container cleanly.
+- Wake polling waits on shutdown and stop active FFmpeg camera processes with bounded waits.
+- Verify clean signal shutdown and Docker exit code 0 in regression and container tests.
+
 ## 0.2.1
 
 - Correct the Sound File example to redalert.mp3 in the UNRAID template, Compose and documentation.

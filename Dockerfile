@@ -8,5 +8,6 @@ COPY VERSION /app/VERSION
 COPY static /app/static
 USER monitor
 EXPOSE 8085
+STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8085/health', timeout=3)"
 CMD ["python", "-u", "app.py"]

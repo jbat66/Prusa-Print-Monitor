@@ -2,6 +2,7 @@
 import json
 import math
 import os
+import signal
 from pathlib import Path
 import subprocess
 import threading
@@ -54,6 +55,7 @@ class Monitor:
                                os.getenv('API_KEY', 'PUT-KEY-HERE'))
         self.opener = urllib.request.build_opener(urllib.request.HTTPDigestAuthHandler(passwords))
         self.lock = threading.Lock()
+        self.stop = threading.Event()
         self.data = dict(state='UNKNOWN', remaining=None, filament=None,
                          connected=False, updated=None, attempted=None, event=0)
 
@@ -72,14 +74,54 @@ class Monitor:
                 self.data.update(connected=False, attempted=time.time())
 
     def run(self):
-        while True:
+        while not self.stop.is_set():
             self.poll()
-            time.sleep(self.refresh)
+            self.stop.wait(self.refresh)
 
     def snapshot(self):
         with self.lock:
             return dict(self.data, refresh=self.refresh, repeat=self.repeat,
                         alert=self.alert, camera=self.camera, server_time=time.time(), version=VERSION)
+
+def stop_camera(process):
+    if process.poll() is None:
+        process.terminate()
+    try:
+        process.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=1)
+
+
+class MonitorServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def __init__(self, address, monitor):
+        super().__init__(address, Handler)
+        self.monitor = monitor
+        self.timeout = 0.25
+        self.camera_slots = threading.BoundedSemaphore(4)
+        self.camera_lock = threading.Lock()
+        self.cameras = set()
+
+    def start_camera(self, args):
+        with self.camera_lock:
+            if self.monitor.stop.is_set():
+                raise OSError('Server is stopping')
+            process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            self.cameras.add(process)
+            return process
+
+    def close_cameras(self):
+        with self.camera_lock:
+            cameras = list(self.cameras)
+        # Signal every camera before waiting for any of them.
+        for process in cameras:
+            if process.poll() is None:
+                process.terminate()
+        for process in cameras:
+            stop_camera(process)
+
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_):
@@ -124,9 +166,8 @@ class Handler(BaseHTTPRequestHandler):
             args = ['ffmpeg', '-nostdin', '-loglevel', 'error', '-rw_timeout', '10000000']
             if urlparse(url).scheme == 'rtsp':
                 args += ['-rtsp_transport', 'tcp']
-            process = subprocess.Popen(args + ['-i', url, '-an', '-vf',
-                'fps=3,scale=960:-2', '-f', 'mpjpeg', '-boundary_tag', 'frame', 'pipe:1'],
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            process = self.server.start_camera(args + ['-i', url, '-an', '-vf',
+                'fps=3,scale=960:-2', '-f', 'mpjpeg', '-boundary_tag', 'frame', 'pipe:1'])
             self.send_response(200)
             self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
             self.send_header('Cache-Control', 'no-store')
@@ -138,17 +179,33 @@ class Handler(BaseHTTPRequestHandler):
             pass
         finally:
             if process:
-                process.kill()
-                process.wait()
+                stop_camera(process)
                 process.stdout.close()
+                with self.server.camera_lock:
+                    self.server.cameras.discard(process)
             self.server.camera_slots.release()
 
 
-if __name__ == '__main__':
+def main():
     monitor = Monitor()
-    server = ThreadingHTTPServer(('0.0.0.0', PORT), Handler)
-    server.monitor = monitor
-    server.camera_slots = threading.BoundedSemaphore(4)
+    server = MonitorServer(('0.0.0.0', PORT), monitor)
+    # Keep signal handlers small. handle_request has a bounded timeout, so
+    # shutdown happens in the main loop without socketserver.shutdown deadlocks.
+    def request_stop(signum, frame):
+        monitor.stop.set()
+    signal.signal(signal.SIGTERM, request_stop)
+    signal.signal(signal.SIGINT, request_stop)
     threading.Thread(target=monitor.run, daemon=True).start()
     print(f'Prusa Print Monitor {VERSION} listening on port {PORT}', flush=True)
-    server.serve_forever()
+    try:
+        while not monitor.stop.is_set():
+            server.handle_request()
+    finally:
+        monitor.stop.set()
+        server.close_cameras()
+        server.server_close()
+        print('Prusa Print Monitor stopped cleanly', flush=True)
+
+
+if __name__ == '__main__':
+    main()
