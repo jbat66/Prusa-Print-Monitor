@@ -1,6 +1,6 @@
 <p align="center"><img src="assets/icon.png" alt="Prusa Print Monitor" width="320"></p>
 
-# Prusa Print Monitor — version 0.2.13
+# Prusa Print Monitor — version 0.2.14
 
 A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a desktop corner or a room display. Uses the same HTTP Digest authentication and status fields as `printer-state-display.sh`. No printer credentials are sent to the browser.
 
@@ -108,9 +108,9 @@ node --test tests/dashboard.test.cjs
 Tests cover state transitions, repeat/acknowledge/mute behavior, disconnections, invalid payloads, web routes, camera controls, credential isolation, and template variable order. CI builds Linux AMD64 and ARM64 images. To update an UNRAID installation after a new image is published, use **Check for Updates** on its Docker page.
 
 
-## Updating to version 0.2.13
+## Updating to version 0.2.14
 
-Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.13` and `:latest`. The source release is tagged `v0.2.13`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
+Images are published as `ghcr.io/jbat66/prusa-print-monitor:0.2.14` and `:latest`. The source release is tagged `v0.2.14`; `VERSION` is the application version, also shown in the dashboard header and status API. See [CHANGELOG.md](CHANGELOG.md).
 
 Existing UNRAID containers retain their old settings. Update the container configuration using the new template: change the container port to **8085** (and host port to 8085 unless you prefer another port), remove `ALERT_SOUND_FILE`, replace the old single-file mount with a writable **Sounds Folder** directory at `/sounds`, and set **Sound File** to `/mnt/user/appdata/prusa-print-monitor/sounds/AlarmSoundEffect.mp3`, and set `ALERT_REPEAT_SECONDS=60`. The camera URL is now unmasked. Update the image and recreate/apply the container.
 
@@ -151,3 +151,6 @@ Version 0.2.11 adds camera focus mode: double-click or double-tap the live camer
 
 
 Version 0.2.13 adds `DEFAULT_LAYOUT` to the UNRAID template, Compose and `.env.example`. It selects the initial layout when a non-mobile browser loads the page, taking precedence over an older saved choice. Phones and tablets still start in Mobile regardless of this setting. Users can choose another layout during the page session; polling does not reset that choice. After changing the Docker variable, apply/recreate the container and reload the page. Accepted values are `desktop`, `compact`, `mobile` and `large` (Across the Room).
+
+
+Version 0.2.14 hides the Next Filament Change card when no change is scheduled (zero or missing countdown). A positive countdown shows the card in its usual position; an elapsed countdown remains visible as Change due until the printer clears or updates it. The remaining-time card fills the available width when the filament card is hidden.

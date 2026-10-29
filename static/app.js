@@ -36,6 +36,7 @@ function tick(){
  $('remaining').textContent=duration(remaining);
  $('finish').textContent=connected&&data.state==='PRINTING'&&remaining!==null?new Date(Date.now()+remaining*1000).toLocaleString([], {weekday:'short',hour:'numeric',minute:'2-digit'}):'—';
  $('filament').textContent=data.filament>0?duration(Math.max(0,data.filament-elapsed)):'—';
+ $('filament-card').hidden=!(data.filament>0);
  $('filament-note').textContent=data.filament>0?(elapsed>=data.filament?'Change due • awaiting printer update':'Until the next change'):'No change scheduled / not reported';
  $('freshness').textContent=data.updated?`Last updated ${new Date(data.updated*1000).toLocaleTimeString()}${connected?'':' • showing last known status'}`:'No successful printer update yet';
  $('ack').disabled=!pending;

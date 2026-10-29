@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.14
+
+- Hide the Next Filament Change card until the printer reports a positive filament-change countdown.
+- Keep pending changes in their existing layout position, including a due change awaiting the next printer update.
+- Let the remaining-time card use the available width when no filament change is scheduled.
+
 ## 0.2.13
 
 - Add DEFAULT_LAYOUT to Docker, Compose and the UNRAID template (desktop, compact, mobile or large).

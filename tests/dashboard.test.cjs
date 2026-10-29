@@ -218,3 +218,19 @@ test('Docker default applies once on desktop and never overrides mobile or manua
  early.element('layout').value='compact';early.element('layout').onchange();await settle();
  assert.equal(early.element('layout').value,'compact');
 });
+
+test('filament card shows only for a pending change and returns in every layout',async()=>{
+ const d=dashboard();await settle();assert.equal(d.element('filament-card').hidden,false);
+ for(const layout of ['desktop','large','compact','mobile']){
+  d.element('layout').value=layout;d.element('layout').onchange();
+  for(const filament of [null,0]){
+   d.context.next={...d.context.next,filament};await d.timers.shift()();
+   assert.equal(d.element('filament-card').hidden,true);
+  }
+  d.context.next={...d.context.next,filament:120};await d.timers.shift()();
+  assert.equal(d.element('filament-card').hidden,false);
+ }
+ d.context.next={...d.context.next,filament:1,updated:Date.now()/1000-10};await d.timers.shift()();
+ assert.equal(d.element('filament-card').hidden,false);
+ assert.match(d.element('filament-note').textContent,/Change due/);
+});
