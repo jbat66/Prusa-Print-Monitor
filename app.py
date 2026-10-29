@@ -53,6 +53,9 @@ class Monitor:
         self.refresh = int(os.getenv('REFRESH_SECONDS', '60'))
         self.repeat = int(os.getenv('ALERT_REPEAT_SECONDS', '60'))
         self.timeout = int(os.getenv('REQUEST_TIMEOUT_SECONDS', '10'))
+        self.default_layout = os.getenv('DEFAULT_LAYOUT', 'desktop').strip().lower()
+        if self.default_layout not in ('desktop', 'compact', 'mobile', 'large'):
+            raise ValueError('DEFAULT_LAYOUT must be desktop, compact, mobile or large')
         if min(self.refresh, self.repeat, self.timeout) < 1:
             raise ValueError('Intervals must be positive integers')
         self.url = os.getenv('PRINTER_URL', 'http://X.X.X.X/api/v1/status')
@@ -109,7 +112,8 @@ class Monitor:
     def snapshot(self):
         with self.lock:
             return dict(self.data, refresh=self.refresh, repeat=self.repeat,
-                        alert=self.alert, camera=self.camera, server_time=time.time(), version=VERSION)
+                        alert=self.alert, camera=self.camera, server_time=time.time(), version=VERSION,
+                        default_layout=self.default_layout)
 
 def stop_camera(process):
     if process.poll() is None:

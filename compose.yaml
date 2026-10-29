@@ -17,6 +17,7 @@ services:
       ALERT_REPEAT_SECONDS: ${ALERT_REPEAT_SECONDS:-60}
       REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-10}
       TZ: ${TZ:-America/Denver}
+      DEFAULT_LAYOUT: ${DEFAULT_LAYOUT:-desktop}
       SOUND_FILE: ${SOUND_FILE:-/mnt/user/appdata/prusa-print-monitor/sounds/AlarmSoundEffect.mp3}
     volumes:
       - type: bind

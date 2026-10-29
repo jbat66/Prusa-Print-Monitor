@@ -52,6 +52,15 @@ class Tests(unittest.TestCase):
         with self.assertRaises((KeyError, ValueError)):
             normalize({'printer': {}})
 
+    def test_default_layout_configuration(self):
+        self.assertEqual(self.monitor.snapshot()['default_layout'], 'desktop')
+        for layout in ('desktop', 'compact', 'mobile', 'large'):
+            with patch.dict(os.environ, {'DEFAULT_LAYOUT': layout}):
+                self.assertEqual(Monitor().snapshot()['default_layout'], layout)
+        with patch.dict(os.environ, {'DEFAULT_LAYOUT': 'invalid'}):
+            with self.assertRaisesRegex(ValueError, 'DEFAULT_LAYOUT'):
+                Monitor()
+
     def test_http_and_secret_isolation(self):
         server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
         server.monitor = self.monitor
@@ -136,7 +145,7 @@ class Tests(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
         self.assertEqual(self.monitor.repeat, 60)
-        self.assertEqual(self.monitor.snapshot()['version'], '0.2.12')
+        self.assertEqual(self.monitor.snapshot()['version'], '0.2.13')
 
     def test_sound_selector_resolves_under_mounted_folder(self):
         with tempfile.TemporaryDirectory() as directory:

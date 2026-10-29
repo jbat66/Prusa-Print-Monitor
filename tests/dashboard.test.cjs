@@ -21,7 +21,7 @@ function dashboard(options={}){
 
  context.cameraResponse={state:'connecting',message:'Connecting camera…'};
 
- context.next={state:'PRINTING',remaining:600,filament:300,connected:true,updated:Date.now()/1000,server_time:Date.now()/1000,event:0,alert:true,camera:true,refresh:60,repeat:30};
+ context.next={default_layout:options.defaultLayout,state:'PRINTING',remaining:600,filament:300,connected:true,updated:Date.now()/1000,server_time:Date.now()/1000,event:0,alert:true,camera:true,refresh:60,repeat:30};
 
  context.AudioContext=class{
   state='suspended';sampleRate=44100;destination={};listeners={};
@@ -205,4 +205,16 @@ test('Enable sounds hides after success and returns after interruption',async()=
  await d.element('sound').onclick();assert.equal(d.element('sound').hidden,true);
  d.run("audioContext.state='interrupted';audioContext.listeners.statechange()");
  assert.equal(d.element('sound').hidden,false);
+});
+
+test('Docker default applies once on desktop and never overrides mobile or manual selection',async()=>{
+ const desktop=dashboard({defaultLayout:'compact',savedLayout:'large'});await settle();
+ assert.equal(desktop.element('layout').value,'compact');
+ desktop.element('layout').value='large';desktop.element('layout').onchange();
+ await desktop.timers.shift()();assert.equal(desktop.element('layout').value,'large');
+ const mobile=dashboard({defaultLayout:'desktop',navigator:{userAgent:'iPhone'}});await settle();
+ assert.equal(mobile.element('layout').value,'mobile');
+ const early=dashboard({defaultLayout:'large'});
+ early.element('layout').value='compact';early.element('layout').onchange();await settle();
+ assert.equal(early.element('layout').value,'compact');
 });

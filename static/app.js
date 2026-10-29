@@ -61,7 +61,16 @@ function setNotice(message,ready=false){
  $('notice').textContent=message;
  $('notice').style.color=ready?'#57d69a':'#ffb258';
 }
-async function poll(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error();const next=await r.json();if(event!==null&&next.event!==event){pending=true;lastPlayed=0;}event=next.event;data=next;received=Date.now();updateNotice();$('version').textContent=`v${data.version}`;$('sound').disabled=!data.alert;$('mute').disabled=!data.alert;$('camera-toggle').disabled=!data.camera;tick();if(cameraOn)await cameraStatus();}catch{if(data)data.connected=false;$('connection').textContent='● Dashboard connection lost';}finally{setTimeout(poll,2000);}}
+let defaultLayoutApplied=false,layoutSelected=false;
+function applyDefaultLayout(){
+ if(defaultLayoutApplied)return;
+ defaultLayoutApplied=true;
+ if(layoutSelected||mobileDevice)return;
+ if(['desktop','compact','mobile','large'].includes(data.default_layout)){
+  $('layout').value=data.default_layout;layout();
+ }
+}
+async function poll(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error();const next=await r.json();if(event!==null&&next.event!==event){pending=true;lastPlayed=0;}event=next.event;data=next;received=Date.now();applyDefaultLayout();updateNotice();$('version').textContent=`v${data.version}`;$('sound').disabled=!data.alert;$('mute').disabled=!data.alert;$('camera-toggle').disabled=!data.camera;tick();if(cameraOn)await cameraStatus();}catch{if(data)data.connected=false;$('connection').textContent='● Dashboard connection lost';}finally{setTimeout(poll,2000);}}
 $('sound').onclick=async()=>{
  $('sound').disabled=true;
  try{
@@ -121,4 +130,4 @@ try{initialLayout=localStorage.getItem('layout')||'desktop';}catch{}
 $('layout').value=mobileDevice?'mobile':initialLayout;
 $('fullscreen').hidden=mobileDevice;
 function layout(){document.body.dataset.layout=$('layout').value;try{localStorage.setItem('layout',$('layout').value);}catch{}}
-$('layout').onchange=layout;layout();setInterval(tick,1000);poll();
+$('layout').onchange=()=>{layoutSelected=true;layout();};layout();setInterval(tick,1000);poll();

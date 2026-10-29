@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.13
+
+- Add DEFAULT_LAYOUT to Docker, Compose and the UNRAID template (desktop, compact, mobile or large).
+- Apply the configured layout once when the page receives settings; phones and tablets retain automatic Mobile layout.
+- Preserve manual layout choices during the current page session, including choices made before settings finish loading.
+
 ## 0.2.12
 
 - Remove the Back to status button. Double-click/double-tap the camera again or press Escape to return from camera focus mode.
