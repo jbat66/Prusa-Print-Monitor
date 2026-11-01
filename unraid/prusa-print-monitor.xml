@@ -7,6 +7,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/jbat66/Prusa-Print-Monitor/issues</Support>
   <Project>https://github.com/jbat66/Prusa-Print-Monitor</Project>
+  <TemplateURL>https://raw.githubusercontent.com/jbat66/Prusa-Print-Monitor/main/unraid/prusa-print-monitor.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/jbat66/Prusa-Print-Monitor/main/assets/app-icon.png</Icon>
   <Overview>PrusaLink status dashboard with compact, mobile and across-the-room layouts. Change PRINTER_URL and API_KEY before starting. Optional browser alerts require a selected MP3 in the writable Sounds Folder at /sounds and clicking Enable sounds. Optional RTSP/HTTP camera is converted by FFmpeg. Keep this dashboard on your trusted LAN; it has no login.</Overview>
   <Category>Tools:</Category>
