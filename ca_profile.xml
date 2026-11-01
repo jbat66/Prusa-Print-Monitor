@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CommunityApplications>
   <Profile><![CDATA[
-A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a desktop corner or a room display. Uses the same HTTP Digest authentication and status fields as `printer-state-display.sh`. No printer credentials are sent to the browser.
+A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a desktop corner or a room display. No printer credentials are sent to the browser.
 
 - Large color-coded printer state, remaining time and estimated finish.
 - Separate filament-change countdown, connection health and last successful update.
