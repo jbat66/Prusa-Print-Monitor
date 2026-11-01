@@ -16,7 +16,10 @@ For setup help, questions, and troubleshooting, use the [Prusa Print Monitor sup
 
 ## Install on UNRAID
 
-1. Download [`unraid/prusa-print-monitor.xml`](unraid/prusa-print-monitor.xml). Save it on your UNRAID server at `/boot/config/plugins/dockerMan/templates-user/my-prusa-print-monitor.xml`.
+The Community Apps template is maintained in [jbat66/unraid-templates](https://github.com/jbat66/unraid-templates), alongside the other applications in that existing Community Apps repository. Application code, Docker builds, icons and support remain here. Submit/scan the template repository, rather than registering this code repository separately.
+
+
+1. Download [the Prusa Print Monitor template](https://raw.githubusercontent.com/jbat66/unraid-templates/main/templates/prusa-print-monitor.xml). Save it on your UNRAID server at `/boot/config/plugins/dockerMan/templates-user/my-prusa-print-monitor.xml`.
 2. In UNRAID, open **Docker → Add Container**, and select **Prusa-Print-Monitor** from the template list.
 3. Replace `X.X.X.X` in `PRINTER_URL` with your printer address and replace `PUT-KEY-HERE` with your PrusaLink password/API key. Default username is `maker`.
 4. Set a free host web port (default `8085`), apply, and use the container's **WebUI** menu. Open `http://YOUR-UNRAID-IP:8085` from other devices.
@@ -109,7 +112,7 @@ python -m unittest discover -s tests -v
 node --test tests/dashboard.test.cjs
 ```
 
-Tests cover state transitions, repeat/acknowledge/mute behavior, disconnections, invalid payloads, web routes, camera controls, credential isolation, and template variable order. CI builds Linux AMD64 and ARM64 images. To update an UNRAID installation after a new image is published, use **Check for Updates** on its Docker page.
+Tests cover state transitions, repeat/acknowledge/mute behavior, disconnections, invalid payloads, web routes, camera controls, credential isolation, and sound initialization. Template XML validation runs separately in [unraid-templates](https://github.com/jbat66/unraid-templates). CI builds Linux AMD64 and ARM64 images. To update an UNRAID installation after a new image is published, use **Check for Updates** on its Docker page.
 
 
 ## Updating to version 0.2.14

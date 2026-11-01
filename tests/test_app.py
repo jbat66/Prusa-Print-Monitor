@@ -5,7 +5,6 @@ import unittest
 import tempfile
 from pathlib import Path
 import urllib.request
-import xml.etree.ElementTree as ET
 from unittest.mock import patch
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from app import Monitor, Handler, normalize, safe_diagnostic
@@ -102,23 +101,6 @@ class Tests(unittest.TestCase):
             self.assertEqual(struct.unpack_from('>II', png, 16), (size, size))
             sizes.append(size)
         self.assertEqual(sizes, [16, 24, 32, 48, 64, 128, 256])
-
-    def test_template_order_and_visibility(self):
-        configs = ET.parse('unraid/prusa-print-monitor.xml').getroot().findall('Config')
-        variables = [c for c in configs if c.attrib['Type'] == 'Variable']
-        self.assertEqual([c.attrib['Target'] for c in variables[:7]],
-            ['PRINTER_URL', 'API_USER', 'API_KEY', 'REFRESH_SECONDS',
-             'ALERT', 'CAMERA', 'CAMERA_URL'])
-        self.assertTrue(all(c.attrib['Display'] == 'always' for c in configs))
-        by_target = {c.attrib['Target']: c for c in configs}
-        self.assertNotIn('ALERT_SOUND_FILE', by_target)
-        self.assertEqual(by_target['CAMERA_URL'].attrib['Mask'], 'false')
-        self.assertEqual(by_target['ALERT_REPEAT_SECONDS'].text, '60')
-        self.assertEqual(by_target['8085'].attrib['Type'], 'Port')
-        self.assertEqual(by_target['/sounds'].attrib['Name'], 'Sounds Folder')
-        self.assertEqual(by_target['/sounds'].attrib['Mode'], 'rw')
-        self.assertEqual(by_target['SOUND_FILE'].attrib['Name'], 'Sound File')
-        self.assertEqual(by_target['SOUND_FILE'].text, '/mnt/user/appdata/prusa-print-monitor/sounds/AlarmSoundEffect.mp3')
 
     def test_alert_requires_file(self):
         with patch.dict(os.environ, {'ALERT': 'true'}), patch('app.SOUND_PATH', Path('/missing/sound')):
