@@ -11,4 +11,5 @@ A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a deskt
   ]]></Profile>
   <Icon>https://raw.githubusercontent.com/jbat66/Prusa-Print-Monitor/main/assets/app-icon.png</Icon>
   <WebPage>https://github.com/jbat66/Prusa-Print-Monitor</WebPage>
+  <Forum>https://github.com/jbat66/Prusa-Print-Monitor/discussions/1</Forum>
 </CommunityApplications>

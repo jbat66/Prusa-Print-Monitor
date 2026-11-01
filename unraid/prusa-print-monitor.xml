@@ -5,7 +5,7 @@
   <Registry>https://github.com/jbat66/Prusa-Print-Monitor/pkgs/container/prusa-print-monitor</Registry>
   <Network>bridge</Network>
   <Privileged>false</Privileged>
-  <Support>https://github.com/jbat66/Prusa-Print-Monitor/issues</Support>
+  <Support>https://github.com/jbat66/Prusa-Print-Monitor/discussions/1</Support>
   <Project>https://github.com/jbat66/Prusa-Print-Monitor</Project>
   <TemplateURL>https://raw.githubusercontent.com/jbat66/Prusa-Print-Monitor/main/unraid/prusa-print-monitor.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/jbat66/Prusa-Print-Monitor/main/assets/app-icon.png</Icon>

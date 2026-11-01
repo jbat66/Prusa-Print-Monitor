@@ -10,6 +10,10 @@ A Docker dashboard for a PrusaLink printer, designed for UNRAID, phones, a deskt
 - State-change sounds with mute, acknowledge and full-screen controls.
 - Optional RTSP/HTTP camera converted to browser-viewable MJPEG by FFmpeg.
 
+## Support
+
+For setup help, questions, and troubleshooting, use the [Prusa Print Monitor support discussion](https://github.com/jbat66/Prusa-Print-Monitor/discussions/1).
+
 ## Install on UNRAID
 
 1. Download [`unraid/prusa-print-monitor.xml`](unraid/prusa-print-monitor.xml). Save it on your UNRAID server at `/boot/config/plugins/dockerMan/templates-user/my-prusa-print-monitor.xml`.
