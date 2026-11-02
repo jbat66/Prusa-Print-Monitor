@@ -1,6 +1,8 @@
 const $ = id => document.getElementById(id);
 let data, received=0, event=null, pending=false, enabled=false, muted=false, lastPlayed=0, cameraOn=false, cameraViewer=Date.now();
 let audioContext, alertBuffer, alertSource;
+let cameraRetryAt=0, cameraRetries=0;
+const CAMERA_RETRY_MS=60000, CAMERA_MAX_RETRIES=4;
 const audio={paused:true,currentTime:0,
  pause(){
   const source=alertSource;alertSource=null;this.paused=true;
@@ -24,6 +26,7 @@ function audioInterrupted(){
 const colors={PRINTING:'#57d69a',PAUSED:'#ffbf69',FINISHED:'#70baff',IDLE:'#9baebf',READY:'#9baebf',ERROR:'#ff6b78',ATTENTION:'#ffbf69',STOPPED:'#ff6b78'};
 function duration(n){if(n===null)return '—';n=Math.max(0,Math.ceil(n));return `${Math.floor(n/3600)}:${String(Math.floor(n/60)%60).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;}
 function tick(){
+ retryCamera();
  const now=new Date();$('clock').textContent=now.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
  $('clock').setAttribute('datetime',now.toISOString());
  if(!data)return;
@@ -103,7 +106,30 @@ $('sound').onclick=async()=>{
 $('mute').onclick=()=>{muted=!muted;audio.pause();$('mute').textContent=muted?'Unmute':'Mute';$('mute').setAttribute('aria-pressed',muted);updateNotice();tick();};
 $('ack').onclick=()=>{pending=false;audio.pause();audio.currentTime=0;updateNotice();tick();};
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{setNotice('Full screen unavailable in this browser');}};
-$('camera-toggle').onclick=()=>{cameraOn=!cameraOn;$('camera-panel').hidden=!cameraOn;$('camera-toggle').textContent=cameraOn?'Camera Enabled':'Enable Camera';if(cameraOn){setCameraStatus('connecting','Connecting camera…');cameraViewer++;$('camera').src=`/camera?viewer=${cameraViewer}`;}else{setCameraFocus(false);$('camera').removeAttribute('src');}};
+function startCameraStream(){
+ cameraViewer++;
+ $('camera').removeAttribute('src');
+ setCameraStatus('connecting','Connecting camera…');
+ $('camera').src=`/camera?viewer=${cameraViewer}`;
+}
+function retryCamera(){
+ if(!cameraOn||!cameraRetryAt||Date.now()<cameraRetryAt)return;
+ if(cameraRetries>=CAMERA_MAX_RETRIES){
+  cameraRetryAt=0;
+  setCameraStatus('error','Camera unavailable after 4 automatic retries. Disable and enable the camera to retry.');
+  return;
+ }
+ cameraRetries++;
+ cameraRetryAt=Date.now()+CAMERA_RETRY_MS;
+ startCameraStream();
+}
+$('camera-toggle').onclick=()=>{
+ cameraOn=!cameraOn;cameraRetryAt=0;cameraRetries=0;
+ $('camera-panel').hidden=!cameraOn;
+ $('camera-toggle').textContent=cameraOn?'Camera Enabled':'Enable Camera';
+ if(cameraOn)startCameraStream();
+ else{setCameraFocus(false);cameraViewer++;$('camera').removeAttribute('src');}
+};
 function setCameraFocus(focused){
  focused=focused&&cameraOn;
  document.body.dataset.cameraFocus=String(focused);
@@ -114,6 +140,15 @@ $('camera').ondblclick=()=>setCameraFocus(document.body.dataset.cameraFocus!=='t
 $('camera').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();$('camera').ondblclick();}};
 document.addEventListener?.('keydown',event=>{if(event.key==='Escape')setCameraFocus(false);});
 function setCameraStatus(state,message){
+ if(state==='live'){cameraRetryAt=0;cameraRetries=0;}
+ else if(cameraOn&&(state==='error'||state==='stopped')){
+  if(cameraRetries>=CAMERA_MAX_RETRIES){
+   cameraRetryAt=0;
+   message='Camera unavailable after 4 automatic retries. Disable and enable the camera to retry.';
+  }else if(!cameraRetryAt)cameraRetryAt=Date.now()+CAMERA_RETRY_MS;
+ }
+ // A connecting response cannot clear the final failure after retries are exhausted.
+ if(cameraOn&&cameraRetries>=CAMERA_MAX_RETRIES&&!cameraRetryAt&&state==='connecting')return;
  $('camera-panel').dataset.cameraState=state;
  $('camera-status').textContent=message;
 }

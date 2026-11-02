@@ -248,3 +248,43 @@ test('camera failure marks the last frame and retry clears the warning',async()=
  d.element('camera').onerror();d.element('camera-toggle').onclick();d.element('camera-toggle').onclick();
  assert.equal(d.element('camera-panel').dataset.cameraState,'connecting');
 });
+
+test('camera retries once per minute, stops after four and manual toggles reset',async()=>{
+ const d=dashboard();await settle();
+ d.run('Date=class extends Date {static now(){return 1000000;}}');
+ d.element('camera-toggle').onclick();d.element('camera').onerror();
+ const first=d.element('camera').src;
+ d.run('retryCamera()');assert.equal(d.element('camera').src,first);
+ d.run('Date.now=()=>1059999; retryCamera()');assert.equal(d.element('camera').src,first);
+ for(let attempt=1;attempt<=4;attempt++){
+  d.run(`Date.now=()=>${1000000+attempt*60000}; retryCamera()`);
+  assert.equal(d.run('cameraRetries'),attempt);
+  assert.notEqual(d.element('camera').src,first);
+  d.element('camera').onerror();
+ }
+ assert.equal(d.element('camera-panel').dataset.cameraState,'error');
+ assert.match(d.element('camera-status').textContent,/after 4 automatic retries/);
+ const last=d.element('camera').src;
+ d.run('Date.now=()=>2000000; retryCamera()');assert.equal(d.element('camera').src,last);
+ d.element('camera-toggle').onclick();d.element('camera-toggle').onclick();
+ assert.equal(d.run('cameraRetries'),0);assert.equal(d.run('cameraRetryAt'),0);
+});
+
+test('live camera resets retry budget and disabling cancels scheduled retries',async()=>{
+ const d=dashboard();await settle();d.element('camera-toggle').onclick();
+ d.element('camera').onerror();d.run('cameraRetryAt=Date.now()-1; retryCamera()');
+ assert.equal(d.run('cameraRetries'),1);
+ d.context.cameraResponse={state:'live',message:'Live camera'};await d.run('cameraStatus()');
+ assert.equal(d.run('cameraRetries'),0);assert.equal(d.run('cameraRetryAt'),0);
+ d.element('camera').onerror();assert.ok(d.run('cameraRetryAt')>0);
+ d.element('camera-toggle').onclick();d.run('retryCamera()');
+ assert.equal(d.run('cameraRetryAt'),0);assert.equal(d.element('camera-panel').hidden,true);
+});
+
+test('a retry that stays connecting times out without an endless restart loop',async()=>{
+ const d=dashboard();await settle();d.element('camera-toggle').onclick();d.element('camera').onerror();
+ for(let attempt=0;attempt<5;attempt++)d.run('cameraRetryAt=Date.now()-1; retryCamera()');
+ assert.equal(d.run('cameraRetries'),4);assert.equal(d.run('cameraRetryAt'),0);
+ d.context.cameraResponse={state:'connecting',message:'Connecting camera…'};await d.run('cameraStatus()');
+ assert.equal(d.element('camera-panel').dataset.cameraState,'error');
+});

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.16
+
+- Retry a failed camera after one minute, with up to three additional retries at one-minute intervals.
+- Reset the retry budget on live status or manual camera toggles; cancel retries when disabled.
+- Keep the red border after all four retries fail, including streams stuck connecting.
+
 ## 0.2.15
 
 - Outline the camera in red when its stream ends, stops or becomes unavailable, including in the expanded camera view.
