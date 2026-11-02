@@ -10,7 +10,7 @@ function dashboard(options={}){
 
  const elements={}, timers=[];let plays=0;
 
- const element=id=>elements[id] ||= {textContent:'',style:{},value:'desktop',setAttribute(){},removeAttribute(){}};
+ const element=id=>elements[id] ||= {textContent:'',dataset:{},style:{},value:'desktop',setAttribute(){},removeAttribute(){}};
 
  const context={document:{getElementById:element,body:{dataset:{},style:{setProperty(){}}}},
 
@@ -233,4 +233,18 @@ test('filament card shows only for a pending change and returns in every layout'
  d.context.next={...d.context.next,filament:1,updated:Date.now()/1000-10};await d.timers.shift()();
  assert.equal(d.element('filament-card').hidden,false);
  assert.match(d.element('filament-note').textContent,/Change due/);
+});
+
+test('camera failure marks the last frame and retry clears the warning',async()=>{
+ const d=dashboard();await settle();d.element('camera-toggle').onclick();
+ assert.equal(d.element('camera-panel').dataset.cameraState,'connecting');
+ for(const state of ['live','error','stopped']){
+  d.context.cameraResponse={state,message:state};await d.run('cameraStatus()');
+  assert.equal(d.element('camera-panel').dataset.cameraState,state);
+ }
+ d.element('camera').onerror();assert.equal(d.element('camera-panel').dataset.cameraState,'error');
+ d.context.cameraResponse={state:'live',message:'Live camera'};await d.element('camera').onload();
+ assert.equal(d.element('camera-panel').dataset.cameraState,'live');
+ d.element('camera').onerror();d.element('camera-toggle').onclick();d.element('camera-toggle').onclick();
+ assert.equal(d.element('camera-panel').dataset.cameraState,'connecting');
 });

@@ -44,3 +44,6 @@ body[data-camera-focus=true][data-layout] #camera{display:block;width:100%;heigh
 body[data-camera-focus=true] #notice{order:2}
 body[data-camera-focus=true] .ack-row{order:3}
 body[data-camera-focus=true] footer{order:4}
+
+/* Mark a lost stream without hiding its last frame or changing the layout. */
+#camera-panel:is([data-camera-state=error],[data-camera-state=stopped]) #camera{box-shadow:0 0 0 4px #ff4545}

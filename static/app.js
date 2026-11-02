@@ -103,7 +103,7 @@ $('sound').onclick=async()=>{
 $('mute').onclick=()=>{muted=!muted;audio.pause();$('mute').textContent=muted?'Unmute':'Mute';$('mute').setAttribute('aria-pressed',muted);updateNotice();tick();};
 $('ack').onclick=()=>{pending=false;audio.pause();audio.currentTime=0;updateNotice();tick();};
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{setNotice('Full screen unavailable in this browser');}};
-$('camera-toggle').onclick=()=>{cameraOn=!cameraOn;$('camera-panel').hidden=!cameraOn;$('camera-toggle').textContent=cameraOn?'Camera Enabled':'Enable Camera';if(cameraOn){$('camera-status').textContent='Connecting camera…';cameraViewer++;$('camera').src=`/camera?viewer=${cameraViewer}`;}else{setCameraFocus(false);$('camera').removeAttribute('src');}};
+$('camera-toggle').onclick=()=>{cameraOn=!cameraOn;$('camera-panel').hidden=!cameraOn;$('camera-toggle').textContent=cameraOn?'Camera Enabled':'Enable Camera';if(cameraOn){setCameraStatus('connecting','Connecting camera…');cameraViewer++;$('camera').src=`/camera?viewer=${cameraViewer}`;}else{setCameraFocus(false);$('camera').removeAttribute('src');}};
 function setCameraFocus(focused){
  focused=focused&&cameraOn;
  document.body.dataset.cameraFocus=String(focused);
@@ -113,16 +113,20 @@ function setCameraFocus(focused){
 $('camera').ondblclick=()=>setCameraFocus(document.body.dataset.cameraFocus!=='true');
 $('camera').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();$('camera').ondblclick();}};
 document.addEventListener?.('keydown',event=>{if(event.key==='Escape')setCameraFocus(false);});
+function setCameraStatus(state,message){
+ $('camera-panel').dataset.cameraState=state;
+ $('camera-status').textContent=message;
+}
 async function cameraStatus(){
  const viewer=cameraViewer;
  try{
   const response=await fetch(`/api/camera/status?viewer=${viewer}`,{cache:'no-store'});
   if(!response.ok)throw Error();
   const status=await response.json();
-  if(cameraOn&&viewer===cameraViewer)$('camera-status').textContent=status.message;
- }catch{if(cameraOn&&viewer===cameraViewer)$('camera-status').textContent='Cannot read camera status. Check UNRAID container logs.';}
+  if(cameraOn&&viewer===cameraViewer)setCameraStatus(status.state,status.message);
+ }catch{if(cameraOn&&viewer===cameraViewer)setCameraStatus('error','Cannot read camera status. Check UNRAID container logs.');}
 }
-$('camera').onload=()=>{$('camera-status').textContent='Live camera';};$('camera').onerror=()=>{$('camera-status').textContent='Camera unavailable. Check CAMERA_URL, then toggle to retry.';};
+$('camera').onload=()=>{if(cameraOn)return cameraStatus();};$('camera').onerror=()=>{if(cameraOn)setCameraStatus('error','Camera unavailable. Check CAMERA_URL, then toggle to retry.');};
 const mobileDevice=typeof navigator!=='undefined'&&(
  navigator.userAgentData?.mobile===true||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'')||
  (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1));

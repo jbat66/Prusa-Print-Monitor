@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.15
+
+- Outline the camera in red when its stream ends, stops or becomes unavailable, including in the expanded camera view.
+- Clear the warning when retrying or when the stream reports live again.
+
 ## 0.2.14
 
 - Hide the Next Filament Change card until the printer reports a positive filament-change countdown.
